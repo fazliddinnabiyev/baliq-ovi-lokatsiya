@@ -3,6 +3,7 @@ import { isAllowed } from "@/lib/auth";
 import { FISH } from "@/lib/fish";
 import { appUrl } from "@/lib/http";
 import { query } from "@/lib/db";
+import { webhookSecret } from "@/lib/secret";
 import { getSpot } from "@/lib/spots";
 import { tgCall } from "@/lib/telegram";
 
@@ -74,12 +75,14 @@ async function handleMessage(msg: Msg, base: string) {
 
   const text = (msg.text || "").trim();
   if (text.startsWith("/start")) {
+    const name = msg.from?.first_name ? `, ${msg.from.first_name}` : "";
     await tgCall("sendMessage", {
       chat_id: chatId,
       text:
-        "🎣 Baliq ovi joylari\n\n" +
-        "Menga lokatsiya yuboring (📎 → Location) — men uni saqlayman va qaysi baliq ko'p ekanini so'rayman.\n" +
-        "Keyin xaritani ochib izoh (yem, vaqt), rasm va video qo'shishingiz mumkin.",
+        `🎣 Assalomu alaykum${name}!\n\n` +
+        "Bu — sizning shaxsiy baliq ovi daftaringiz. Topgan joylaringiz bir xaritada jamlanadi va keyingi mavsumda esingizdan chiqmaydi.\n\n" +
+        "📍 Yangi joy qo'shish: menga lokatsiya yuboring (📎 → Location).\n" +
+        "🗺 Mini App'ni hoziroq oching: pastdagi tugmani bosing — xaritada barcha joylaringiz, yem, vaqt, izoh, rasm va videolar bor.",
       reply_markup: openButton(base),
     });
     return;
@@ -162,7 +165,7 @@ async function handleCallback(cb: Cb, base: string) {
 }
 
 export async function POST(req: Request) {
-  const secret = process.env.WEBHOOK_SECRET;
+  const secret = webhookSecret();
   if (!secret || req.headers.get("x-telegram-bot-api-secret-token") !== secret) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
