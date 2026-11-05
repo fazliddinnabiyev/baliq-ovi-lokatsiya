@@ -7,6 +7,12 @@ import { api } from "@/lib/client";
 import type { Spot } from "@/lib/types";
 import SpotSheet from "./SpotSheet";
 
+// O'zbekiston chegaralari (janubi-g'arb, shimoli-sharq)
+const UZ_BOUNDS: LeafletTypes.LatLngBoundsExpression = [
+  [37.1, 55.9],
+  [45.6, 73.2],
+];
+
 const MONTHS = ["yan", "fev", "mar", "apr", "may", "iyn", "iyl", "avg", "sen", "okt", "noy", "dek"];
 
 function shortDate(iso: string): string {
@@ -151,8 +157,12 @@ export default function App() {
       });
 
       mapRef.current = map;
+      map.fitBounds(UZ_BOUNDS, { animate: false });
       setReady(true);
-      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => {
+        map.invalidateSize();
+        map.fitBounds(UZ_BOUNDS, { animate: false });
+      }, 120);
     })();
     return () => {
       cancelled = true;
@@ -200,7 +210,11 @@ export default function App() {
     );
   }, [spots]);
 
-  // Birinchi yuklanganda: ?spot=ID yoki hamma joylarni ko'rsatish
+  const fitUz = useCallback(() => {
+    mapRef.current?.fitBounds(UZ_BOUNDS, { animate: true });
+  }, []);
+
+  // Birinchi yuklanganda: ?spot=ID bo'lsa shu joy, aks holda butun O'zbekiston ko'rinadi
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !ready || !loaded || fittedRef.current) return;
@@ -209,8 +223,7 @@ export default function App() {
     const want = Number(new URLSearchParams(window.location.search).get("spot"));
     const target = spots.find((s) => s.id === want);
     if (target) setSelectedId(target.id);
-    else fitAll();
-  }, [ready, loaded, spots, fitAll]);
+  }, [ready, loaded, spots]);
 
   // Joy tanlanganda: xarita unga uchadi, sahifa tepaga suriladi, orqa fon qotadi
   useEffect(() => {
@@ -272,9 +285,14 @@ export default function App() {
 
       <section className="mapCard">
         <div ref={mapEl} className="map" />
-        <button className="mapBtn fitBtn" onClick={fitAll} disabled={spots.length === 0} aria-label="Hamma joyni ko'rsatish">
-          Hammasi
-        </button>
+        <div className="mapTools">
+          <button className="mapBtn" onClick={fitUz}>
+            O'zbekiston
+          </button>
+          <button className="mapBtn" onClick={fitAll} disabled={spots.length === 0}>
+            Joylarim
+          </button>
+        </div>
         <button
           className={`mapBtn addBtn ${adding ? "addOn" : ""}`}
           onClick={() => setAdding((v) => !v)}
