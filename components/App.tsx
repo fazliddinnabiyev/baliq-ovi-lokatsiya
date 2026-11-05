@@ -4,6 +4,8 @@ import "leaflet/dist/leaflet.css";
 import type * as LeafletTypes from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS } from "@/lib/fish";
+import { OTHER_REGION, REGIONS, regionShort } from "@/lib/regions";
 import type { Spot } from "@/lib/types";
 import SpotSheet from "./SpotSheet";
 
@@ -29,6 +31,26 @@ function allFish(s: Spot): string[] {
   return [s.fishMost, s.fishMid, s.fishLeast].filter((x): x is string => !!x);
 }
 
+function blankSpot(lat: number, lng: number): Spot {
+  const now = new Date().toISOString();
+  return {
+    id: 0,
+    lat,
+    lng,
+    name: "",
+    region: null,
+    fishMost: null,
+    fishMid: null,
+    fishLeast: null,
+    bait: "",
+    times: [],
+    note: "",
+    createdAt: now,
+    updatedAt: now,
+    media: [],
+  };
+}
+
 function Level({ n }: { n: number }) {
   return (
     <span className="lvl" aria-hidden="true">
@@ -39,13 +61,18 @@ function Level({ n }: { n: number }) {
   );
 }
 
-function bobberIcon(L: typeof LeafletTypes, selected: boolean) {
+/** Kichik tomchi shaklidagi belgi; rangi eng ko'p baliq turiga qarab. */
+function pinIcon(L: typeof LeafletTypes, color: string, selected: boolean) {
   return L.divIcon({
     className: "",
-    html: `<div class="bob ${selected ? "bobSel" : ""}"><i></i></div>`,
-    iconSize: [26, 40],
-    iconAnchor: [13, 36],
+    html: `<div class="pinW ${selected ? "pinSel" : ""}"><i class="pin" style="--c:${color}"></i></div>`,
+    iconSize: [26, 30],
+    iconAnchor: [13, 27],
   });
+}
+
+function spotColor(s: Spot): string {
+  return (s.fishMost && FISH_COLORS[s.fishMost]) || DEFAULT_PIN_COLOR;
 }
 
 export default function App() {
@@ -56,6 +83,8 @@ export default function App() {
   const [adding, setAdding] = useState(false);
   const [search, setSearch] = useState("");
   const [fishFilter, setFishFilter] = useState("");
+  const [regionFilter, setRegionFilter] = useState("");
+  const [newSpot, setNewSpot] = useState<{ lat: number; lng: number } | null>(null);
   const [message, setMessage] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -114,18 +143,35 @@ export default function App() {
       .finally(() => setLoaded(true));
   }, []);
 
-  // Xaritadan bosib joy qo'shish
+  // Xaritadan bosib joy qo'shish: avval varaq ochiladi, baliq turlari tanlangach saqlanadi
   const onMapClick = useRef<(lat: number, lng: number) => void>(() => {});
-  onMapClick.current = async (lat, lng) => {
+  onMapClick.current = (lat, lng) => {
     setAdding(false);
-    try {
-      const s = await api<Spot>("/api/spots", { method: "POST", body: JSON.stringify({ lat, lng }) });
-      setSpots((prev) => [s, ...prev]);
-      setSelectedId(s.id);
-    } catch (e) {
-      toast((e as Error).message);
-    }
+    setSelectedId(null);
+    setNewSpot({ lat, lng });
   };
+
+  // Yangi (hali saqlanmagan) joy uchun vaqtinchalik belgi
+  const tempMarker = useRef<LeafletTypes.Marker | null>(null);
+  useEffect(() => {
+    const L = LRef.current;
+    const map = mapRef.current;
+    tempMarker.current?.remove();
+    tempMarker.current = null;
+    if (!L || !map || !newSpot) return;
+    tempMarker.current = L.marker([newSpot.lat, newSpot.lng], {
+      icon: pinIcon(L, "#e4473a", true),
+      zIndexOffset: 2000,
+    }).addTo(map);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    map.invalidateSize();
+    if (map.getZoom() < 12) map.setView([newSpot.lat, newSpot.lng], 14, { animate: true });
+    else map.panTo([newSpot.lat, newSpot.lng], { animate: true });
+    return () => {
+      tempMarker.current?.remove();
+      tempMarker.current = null;
+    };
+  }, [newSpot, ready]);
 
   useEffect(() => {
     addingRef.current = adding;
@@ -144,14 +190,22 @@ export default function App() {
         [41.3, 69.27],
         6
       );
-      const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 });
+      // Yengil va tinch ranglardagi xarita (qorong'i rejimda qorong'isi)
+      const dark = document.documentElement.dataset.theme === "dark";
+      const base = L.tileLayer(
+        `https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "rastermaps/voyager"}/{z}/{x}/{y}{r}.png`,
+        { maxZoom: 19, subdomains: "abcd" }
+      );
       const sat = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
         { maxZoom: 19 }
       );
-      osm.addTo(map);
-      L.control.layers({ Xarita: osm, "Sun'iy yo'ldosh": sat }, undefined, { position: "topright" }).addTo(map);
-      L.control.attribution({ position: "bottomright", prefix: false }).addAttribution("© OpenStreetMap, Esri").addTo(map);
+      base.addTo(map);
+      L.control.layers({ Xarita: base, "Sun'iy yo'ldosh": sat }, undefined, { position: "topright" }).addTo(map);
+      L.control
+        .attribution({ position: "bottomright", prefix: false })
+        .addAttribution("© OpenStreetMap, CARTO, Esri")
+        .addTo(map);
       map.on("click", (e: LeafletTypes.LeafletMouseEvent) => {
         if (addingRef.current) onMapClick.current(e.latlng.lat, e.latlng.lng);
       });
@@ -181,7 +235,7 @@ export default function App() {
     const seen = new Set<number>();
     for (const s of spots) {
       seen.add(s.id);
-      const icon = bobberIcon(L, s.id === selectedId);
+      const icon = pinIcon(L, spotColor(s), s.id === selectedId);
       let marker = markersRef.current.get(s.id);
       if (!marker) {
         marker = L.marker([s.lat, s.lng], { icon }).addTo(map);
@@ -220,52 +274,84 @@ export default function App() {
     if (!map || !ready || !loaded || fittedRef.current) return;
     fittedRef.current = true;
 
-    const want = Number(new URLSearchParams(window.location.search).get("spot"));
+    const params = new URLSearchParams(window.location.search);
+
+    // Botga lokatsiya yuborilganda: ?new=lat,lng — yangi joy varag'i shu nuqta bilan ochiladi
+    const [lat, lng] = (params.get("new") || "").split(",").map(Number);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      setNewSpot({ lat, lng });
+      window.history.replaceState(null, "", window.location.pathname);
+      return;
+    }
+
+    const want = Number(params.get("spot"));
     const target = spots.find((s) => s.id === want);
     if (target) setSelectedId(target.id);
   }, [ready, loaded, spots]);
 
-  // Joy tanlanganda: xarita unga uchadi, sahifa tepaga suriladi, orqa fon qotadi
+  // Varaq ochiq turganda orqa sahifa qotadi
   useEffect(() => {
-    document.body.style.overflow = selectedId !== null ? "hidden" : "";
-    const map = mapRef.current;
-    if (!map || selectedId === null) return () => {
+    document.body.style.overflow = selectedId !== null || newSpot ? "hidden" : "";
+    return () => {
       document.body.style.overflow = "";
     };
+  }, [selectedId, newSpot]);
+
+  // Joy tanlanganda: xarita unga uchadi, sahifa tepaga suriladi
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || selectedId === null) return;
     const s = spots.find((x) => x.id === selectedId);
     if (s) {
       window.scrollTo({ top: 0, behavior: "smooth" });
       map.invalidateSize();
       map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15), { animate: true });
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
     // faqat tanlov o'zgarganda
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
   const selected = useMemo(() => spots.find((s) => s.id === selectedId) ?? null, [spots, selectedId]);
 
-  // Baliq bo'yicha filtr tugmalari (nomi va nechta joyda uchrashi)
-  const fishChips = useMemo(() => {
+  // Filtrlar: viloyat va baliq turi birga ishlaydi; tugmalardagi sonlar ikkinchi filtrga moslanadi
+  const hasFish = (s: Spot, f: string) => !f || allFish(s).includes(f);
+
+  const regionChips = useMemo(() => {
     const counts = new Map<string, number>();
-    for (const s of spots) for (const f of allFish(s)) counts.set(f, (counts.get(f) ?? 0) + 1);
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [spots]);
+    for (const s of spots) {
+      if (!hasFish(s, fishFilter)) continue;
+      const r = s.region || OTHER_REGION;
+      counts.set(r, (counts.get(r) ?? 0) + 1);
+    }
+    const order: string[] = [...REGIONS, OTHER_REGION];
+    return order
+      .filter((r) => counts.has(r) || r === regionFilter)
+      .map((r) => [r, counts.get(r) ?? 0] as [string, number]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spots, fishFilter, regionFilter]);
+
+  const fishCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const f of FISH) {
+      m.set(f, spots.filter((s) => (!regionFilter || (s.region || OTHER_REGION) === regionFilter) && hasFish(s, f)).length);
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spots, regionFilter]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return spots.filter((s) => {
-      if (fishFilter && !allFish(s).includes(fishFilter)) return false;
+      if (regionFilter && (s.region || OTHER_REGION) !== regionFilter) return false;
+      if (!hasFish(s, fishFilter)) return false;
       if (!q) return true;
-      return [s.name, s.note, s.bait, ...allFish(s), `joy #${s.id}`]
+      return [s.name, s.note, s.bait, s.region, ...allFish(s), `joy #${s.id}`]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(q);
     });
-  }, [spots, search, fishFilter]);
+  }, [spots, search, fishFilter, regionFilter]);
 
   const onSaved = useCallback((updated: Spot) => {
     setSpots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
@@ -314,21 +400,41 @@ export default function App() {
           onChange={(e) => setSearch(e.target.value)}
         />
 
-        {fishChips.length > 0 && (
-          <div className="filters" role="group" aria-label="Baliq bo'yicha filtr">
-            <button className={`fchip ${fishFilter === "" ? "fchipOn" : ""}`} onClick={() => setFishFilter("")}>
-              Hammasi
-            </button>
-            {fishChips.map(([name, n]) => (
-              <button
-                key={name}
-                className={`fchip ${fishFilter === name ? "fchipOn" : ""}`}
-                onClick={() => setFishFilter(fishFilter === name ? "" : name)}
-              >
-                {name} <b>{n}</b>
+        {spots.length > 0 && (
+          <>
+            <div className="filterLabel">Viloyat</div>
+            <div className="filters" role="group" aria-label="Viloyat bo'yicha filtr">
+              <button className={`fchip ${regionFilter === "" ? "fchipOn" : ""}`} onClick={() => setRegionFilter("")}>
+                Hammasi
               </button>
-            ))}
-          </div>
+              {regionChips.map(([name, n]) => (
+                <button
+                  key={name}
+                  className={`fchip ${regionFilter === name ? "fchipOn" : ""}`}
+                  onClick={() => setRegionFilter(regionFilter === name ? "" : name)}
+                >
+                  {regionShort(name) || name} <b>{n}</b>
+                </button>
+              ))}
+            </div>
+
+            <div className="filterLabel">Baliq turi</div>
+            <div className="filters" role="group" aria-label="Baliq turi bo'yicha filtr">
+              <button className={`fchip ${fishFilter === "" ? "fchipOn" : ""}`} onClick={() => setFishFilter("")}>
+                Hammasi
+              </button>
+              {FISH.map((name) => (
+                <button
+                  key={name}
+                  className={`fchip ${fishFilter === name ? "fchipOn" : ""}`}
+                  onClick={() => setFishFilter(fishFilter === name ? "" : name)}
+                >
+                  <i className="dot" style={{ background: FISH_COLORS[name] }} />
+                  {name} <b>{fishCounts.get(name) ?? 0}</b>
+                </button>
+              ))}
+            </div>
+          </>
         )}
 
         {loaded && !error && spots.length === 0 && (
@@ -374,9 +480,12 @@ export default function App() {
                         )}
                       </span>
                     ) : (
-                      <span className="rowMeta">Baliq tanlanmagan</span>
+                      <span className="warn">Baliq turlarini to'ldiring</span>
                     )}
-                    {s.times.length > 0 && <span className="rowMeta">{s.times.join(", ")}</span>}
+                    <span className="rowMeta">
+                      {s.region && <span className="regionTag">{regionShort(s.region)}</span>}
+                      {s.times.join(", ")}
+                    </span>
                   </span>
                   <span className="rowSide">
                     <span>{shortDate(s.createdAt)}</span>
@@ -389,15 +498,32 @@ export default function App() {
         )}
       </section>
 
-      {selected && (
+      {newSpot ? (
         <SpotSheet
-          key={selected.id}
-          spot={selected}
-          onClose={() => setSelectedId(null)}
+          key={`new-${newSpot.lat}-${newSpot.lng}`}
+          isNew
+          spot={blankSpot(newSpot.lat, newSpot.lng)}
+          onClose={() => setNewSpot(null)}
           onSaved={onSaved}
+          onCreated={(s) => {
+            setSpots((prev) => [s, ...prev]);
+            setNewSpot(null);
+            setSelectedId(s.id);
+          }}
           onDeleted={onDeleted}
           toast={toast}
         />
+      ) : (
+        selected && (
+          <SpotSheet
+            key={selected.id}
+            spot={selected}
+            onClose={() => setSelectedId(null)}
+            onSaved={onSaved}
+            onDeleted={onDeleted}
+            toast={toast}
+          />
+        )
       )}
 
       {message && <div className="toast">{message}</div>}

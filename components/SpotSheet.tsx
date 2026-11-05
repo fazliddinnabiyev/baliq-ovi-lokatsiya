@@ -3,19 +3,24 @@
 import { upload } from "@vercel/blob/client";
 import { useRef, useState } from "react";
 import { api, compressImage, confirmDialog, initData, openLink } from "@/lib/client";
-import { FISH, TIMES } from "@/lib/fish";
+import { FISH, TIMES, validRanking } from "@/lib/fish";
+import { OTHER_REGION, REGIONS } from "@/lib/regions";
 import type { Media, Spot } from "@/lib/types";
 
 type Props = {
   spot: Spot;
+  /** true bo'lsa: joy hali saqlanmagan (xaritadan yangi belgilangan) */
+  isNew?: boolean;
   onClose: () => void;
   onSaved: (spot: Spot) => void;
+  onCreated?: (spot: Spot) => void;
   onDeleted: (id: number) => void;
   toast: (msg: string) => void;
 };
 
-export default function SpotSheet({ spot, onClose, onSaved, onDeleted, toast }: Props) {
+export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCreated, onDeleted, toast }: Props) {
   const [name, setName] = useState(spot.name);
+  const [region, setRegion] = useState(spot.region ?? "");
   const [fishMost, setFishMost] = useState(spot.fishMost ?? "");
   const [fishMid, setFishMid] = useState(spot.fishMid ?? "");
   const [fishLeast, setFishLeast] = useState(spot.fishLeast ?? "");
@@ -28,26 +33,43 @@ export default function SpotSheet({ spot, onClose, onSaved, onDeleted, toast }: 
   const [viewer, setViewer] = useState<Media | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const fishValid = validRanking(fishMost, fishMid, fishLeast);
+
   const toggleTime = (t: string) =>
     setTimes((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
   async function save() {
+    if (!fishValid) {
+      toast("Avval uchala baliq turini tanlang");
+      return;
+    }
     setSaving(true);
     try {
-      const updated = await api<Spot>(`/api/spots/${spot.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({
-          name,
-          fishMost: fishMost || null,
-          fishMid: fishMid || null,
-          fishLeast: fishLeast || null,
-          bait,
-          times,
-          note,
-        }),
-      });
-      onSaved(updated);
-      toast("Saqlandi ✓");
+      const payload = {
+        name,
+        ...(region ? { region } : {}),
+        fishMost,
+        fishMid,
+        fishLeast,
+        bait,
+        times,
+        note,
+      };
+      if (isNew) {
+        const created = await api<Spot>("/api/spots", {
+          method: "POST",
+          body: JSON.stringify({ ...payload, lat: spot.lat, lng: spot.lng }),
+        });
+        toast("Joy saqlandi ✓");
+        onCreated?.(created);
+      } else {
+        const updated = await api<Spot>(`/api/spots/${spot.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        });
+        onSaved(updated);
+        toast("Saqlandi ✓");
+      }
     } catch (e) {
       toast((e as Error).message);
     } finally {
@@ -106,15 +128,16 @@ export default function SpotSheet({ spot, onClose, onSaved, onDeleted, toast }: 
     }
   }
 
+  const chosen = [fishMost, fishMid, fishLeast];
   const fishSelect = (icon: string, label: string, value: string, set: (v: string) => void) => (
     <label className="row">
       <span className="rowLabel">
         {icon} {label}
       </span>
-      <select value={value} onChange={(e) => set(e.target.value)}>
-        <option value="">— tanlanmagan —</option>
+      <select value={value} onChange={(e) => set(e.target.value)} className={value ? "" : "needs"}>
+        <option value="">Tanlang</option>
         {FISH.map((f) => (
-          <option key={f} value={f}>
+          <option key={f} value={f} disabled={f !== value && chosen.includes(f)}>
             {f}
           </option>
         ))}
@@ -129,7 +152,7 @@ export default function SpotSheet({ spot, onClose, onSaved, onDeleted, toast }: 
         <input
           className="nameInput"
           value={name}
-          placeholder={`Joy #${spot.id}`}
+          placeholder={isNew ? "Yangi joy" : `Joy #${spot.id}`}
           maxLength={100}
           onChange={(e) => setName(e.target.value)}
         />
@@ -157,10 +180,11 @@ export default function SpotSheet({ spot, onClose, onSaved, onDeleted, toast }: 
       </div>
 
       <div className="section">
-        <h3>🐟 Qaysi baliq ko'proq?</h3>
+        <h3>🐟 Qaysi baliq ko'proq? (majburiy)</h3>
         {fishSelect("🥇", "Eng ko'p", fishMost, setFishMost)}
         {fishSelect("🥈", "O'rtacha", fishMid, setFishMid)}
         {fishSelect("🥉", "Eng kam", fishLeast, setFishLeast)}
+        {!fishValid && <p className="req">Uchala baliq turini ham tanlang. Har biri har xil bo'lishi kerak.</p>}
       </div>
 
       <div className="section">
@@ -198,41 +222,64 @@ export default function SpotSheet({ spot, onClose, onSaved, onDeleted, toast }: 
 
       <div className="section">
         <h3>📷 Rasm va videolar</h3>
-        <div className="mediaGrid">
-          {spot.media.map((m) => (
-            <button key={m.id} className="thumb" onClick={() => setViewer(m)}>
-              {m.kind === "video" ? (
-                <>
-                  <video src={`${m.url}#t=0.1`} preload="metadata" muted playsInline />
-                  <span className="play">▶</span>
-                </>
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.url} alt="" loading="lazy" />
-              )}
-            </button>
-          ))}
-          <button className="thumb addThumb" onClick={() => fileRef.current?.click()} disabled={!!progress}>
-            {progress ? progress : "＋"}
-          </button>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="image/*,video/*"
-          multiple
-          hidden
-          onChange={(e) => onFiles(e.target.files)}
-        />
+        {isNew ? (
+          <p className="hint">Rasm va video joy saqlangandan keyin qo'shiladi.</p>
+        ) : (
+          <>
+            <div className="mediaGrid">
+              {spot.media.map((m) => (
+                <button key={m.id} className="thumb" onClick={() => setViewer(m)}>
+                  {m.kind === "video" ? (
+                    <>
+                      <video src={`${m.url}#t=0.1`} preload="metadata" muted playsInline />
+                      <span className="play">▶</span>
+                    </>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.url} alt="" loading="lazy" />
+                  )}
+                </button>
+              ))}
+              <button className="thumb addThumb" onClick={() => fileRef.current?.click()} disabled={!!progress}>
+                {progress ? progress : "＋"}
+              </button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              hidden
+              onChange={(e) => onFiles(e.target.files)}
+            />
+          </>
+        )}
+      </div>
+
+      <div className="section">
+        <label className="row">
+          <span className="rowLabel">🧭 Viloyat</span>
+          <select value={region} onChange={(e) => setRegion(e.target.value)}>
+            <option value="">{isNew ? "Avto-aniqlash" : "Aniqlanmagan"}</option>
+            {REGIONS.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+            <option value={OTHER_REGION}>{OTHER_REGION}</option>
+          </select>
+        </label>
       </div>
 
       <div className="actions">
-        <button className="primary" onClick={save} disabled={saving}>
-          {saving ? "Saqlanmoqda..." : "Saqlash"}
+        <button className="primary" onClick={save} disabled={saving || !fishValid}>
+          {saving ? "Saqlanmoqda..." : isNew ? "Joyni saqlash" : "Saqlash"}
         </button>
-        <button className="danger" onClick={remove}>
-          🗑 O'chirish
-        </button>
+        {!isNew && (
+          <button className="danger" onClick={remove}>
+            🗑 O'chirish
+          </button>
+        )}
       </div>
 
       {viewer && (

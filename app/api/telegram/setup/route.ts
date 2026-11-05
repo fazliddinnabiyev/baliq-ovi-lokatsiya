@@ -26,7 +26,7 @@ export async function GET(req: Request) {
   const webhook = await tgCall("setWebhook", {
     url: `${base}/api/telegram`,
     secret_token: secret,
-    allowed_updates: ["message", "callback_query"],
+    allowed_updates: ["message"],
     drop_pending_updates: false,
   });
   const menu = await tgCall("setChatMenuButton", {

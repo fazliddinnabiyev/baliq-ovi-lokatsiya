@@ -9,6 +9,7 @@ export type Spot = {
   lat: number;
   lng: number;
   name: string;
+  region: string | null;
   fishMost: string | null;
   fishMid: string | null;
   fishLeast: string | null;

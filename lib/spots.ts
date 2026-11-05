@@ -1,4 +1,6 @@
 import { query } from "./db";
+import { isFish } from "./fish";
+import { nearestRegion } from "./regions";
 import type { Spot } from "./types";
 
 const SPOT_SELECT = `
@@ -6,6 +8,7 @@ const SPOT_SELECT = `
   s.lat,
   s.lng,
   s.name,
+  s.region,
   s.fish_most AS "fishMost",
   s.fish_mid AS "fishMid",
   s.fish_least AS "fishLeast",
@@ -21,19 +24,36 @@ const SPOT_SELECT = `
   ) AS media
 `;
 
-export async function listSpots(ownerId: string): Promise<Spot[]> {
-  const r = await query<Spot>(
-    `SELECT ${SPOT_SELECT} FROM spots s WHERE s.owner_id = $1 ORDER BY s.id DESC`,
-    [ownerId]
-  );
-  return r.rows;
+/** Eski ma'lumotlarni tuzatadi: noma'lum baliq nomi bo'sh bo'ladi, viloyati yo'q joyga viloyat yoziladi. */
+async function tidy(rows: Spot[]): Promise<Spot[]> {
+  for (const r of rows) {
+    if (!isFish(r.fishMost)) r.fishMost = null;
+    if (!isFish(r.fishMid)) r.fishMid = null;
+    if (!isFish(r.fishLeast)) r.fishLeast = null;
+    if (!r.region) {
+      r.region = nearestRegion(r.lat, r.lng);
+      await query(`UPDATE spots SET region = $1 WHERE id = $2`, [r.region, r.id]);
+    }
+  }
+  return rows;
 }
 
-export async function getSpot(id: number, ownerId: string): Promise<Spot | null> {
+export async function listSpots(ownerId: string): Promise<Spot[]> {
+  const r = await query<Spot>(
+    `SELECT ${SPOT_SELECT} FROM spots s WHERE s.owner_id = $1 AND s.draft = false ORDER BY s.id DESC`,
+    [ownerId]
+  );
+  return tidy(r.rows);
+}
+
+/** includeDraft: bot hali tugallanmagan (baliq tanlanayotgan) joyni ham ko'rishi uchun. */
+export async function getSpot(id: number, ownerId: string, includeDraft = false): Promise<Spot | null> {
   if (!Number.isInteger(id)) return null;
   const r = await query<Spot>(
-    `SELECT ${SPOT_SELECT} FROM spots s WHERE s.id = $1 AND s.owner_id = $2`,
-    [id, ownerId]
+    `SELECT ${SPOT_SELECT} FROM spots s
+     WHERE s.id = $1 AND s.owner_id = $2 AND ($3::boolean OR s.draft = false)`,
+    [id, ownerId, includeDraft]
   );
-  return r.rows[0] ?? null;
+  const rows = await tidy(r.rows);
+  return rows[0] ?? null;
 }

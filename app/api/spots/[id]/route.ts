@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { del } from "@vercel/blob";
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
-import { FISH, TIMES } from "@/lib/fish";
+import { TIMES, validRanking } from "@/lib/fish";
 import { badRequest, fail, notFound, unauthorized } from "@/lib/http";
+import { isRegion } from "@/lib/regions";
 import { getSpot } from "@/lib/spots";
 
 export const dynamic = "force-dynamic";
@@ -44,17 +45,19 @@ export async function PATCH(req: Request, ctx: Ctx) {
     if ("bait" in body) add("bait", str(body.bait, 500));
     if ("note" in body) add("note", str(body.note, 3000));
 
-    const fishFields = [
-      ["fishMost", "fish_most"],
-      ["fishMid", "fish_mid"],
-      ["fishLeast", "fish_least"],
-    ] as const;
-    for (const [key, col] of fishFields) {
-      if (!(key in body)) continue;
-      const v = body[key];
-      if (v === null || v === "") add(col, null);
-      else if (typeof v === "string" && (FISH as readonly string[]).includes(v)) add(col, v);
-      else return badRequest("Baliq nomi noto'g'ri");
+    // Baliq turlari majburiy: yuborilsa uchalasi ham to'g'ri va bir-biridan farqli bo'lishi shart.
+    if ("fishMost" in body || "fishMid" in body || "fishLeast" in body) {
+      if (!validRanking(body.fishMost, body.fishMid, body.fishLeast)) {
+        return badRequest("Eng ko'p, o'rtacha va eng kam baliq turini tanlang (uchalasi har xil bo'lishi kerak)");
+      }
+      add("fish_most", body.fishMost);
+      add("fish_mid", body.fishMid);
+      add("fish_least", body.fishLeast);
+    }
+
+    if ("region" in body) {
+      if (!isRegion(body.region)) return badRequest("Viloyat noto'g'ri");
+      add("region", body.region);
     }
 
     if ("times" in body) {
