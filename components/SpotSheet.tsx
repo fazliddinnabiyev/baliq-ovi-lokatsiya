@@ -124,6 +124,7 @@ export default function SpotSheet({ spot, onClose, onSaved, onDeleted, toast }: 
 
   return (
     <div className="sheet">
+      <div className="grab" aria-hidden="true" />
       <div className="sheetHead">
         <input
           className="nameInput"
