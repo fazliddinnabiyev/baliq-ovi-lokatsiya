@@ -36,7 +36,15 @@ izoh, rasm va video qo'shasiz.
    Javobda `"ok": true` ko'rinsa tayyor.
 7. Botga `/start` yozing va lokatsiya yuboring.
 
-## Baliq ro'yxatini o'zgartirish
+## Yandex xaritasi (ixtiyoriy)
+
+1. [developer.tech.yandex.ru](https://developer.tech.yandex.ru/) → "Kabinet" → kalit yarating, xizmat: **JavaScript API va HTTP Geokoder**.
+2. Kalit sozlamalarida "HTTP Referer cheklovi"ga ilova manzilini qo'shing (masalan `https://sizning-loyiha.vercel.app`).
+3. Vercel → Settings → Environment Variables → `YANDEX_MAPS_KEY` = kalit. Keyin **Redeploy**.
+
+Kalit bo'lmasa (yoki Yandex yuklanmasa) zaxira xarita (CARTO/Esri) ishlaydi.
+
+## Baliq turlarini o'zgartirish
 
 `lib/fish.ts` faylida `FISH` (baliq nomlari) va `TIMES` (kun qismlari) ro'yxati bor — shu yerda tahrirlang.
 

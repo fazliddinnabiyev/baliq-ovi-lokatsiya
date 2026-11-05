@@ -1,16 +1,16 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import type * as LeafletTypes from "leaflet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS } from "@/lib/fish";
+import { createLeafletEngine, createYandexEngine, type Bounds, type MapEngine } from "@/lib/mapEngine";
 import { OTHER_REGION, REGIONS, regionShort } from "@/lib/regions";
 import type { Spot } from "@/lib/types";
 import SpotSheet from "./SpotSheet";
 
 // O'zbekiston chegaralari (janubi-g'arb, shimoli-sharq)
-const UZ_BOUNDS: LeafletTypes.LatLngBoundsExpression = [
+const UZ_BOUNDS: Bounds = [
   [37.1, 55.9],
   [45.6, 73.2],
 ];
@@ -61,21 +61,11 @@ function Level({ n }: { n: number }) {
   );
 }
 
-/** Kichik tomchi shaklidagi belgi; rangi eng ko'p baliq turiga qarab. */
-function pinIcon(L: typeof LeafletTypes, color: string, selected: boolean) {
-  return L.divIcon({
-    className: "",
-    html: `<div class="pinW ${selected ? "pinSel" : ""}"><i class="pin" style="--c:${color}"></i></div>`,
-    iconSize: [26, 30],
-    iconAnchor: [13, 27],
-  });
-}
-
 function spotColor(s: Spot): string {
   return (s.fishMost && FISH_COLORS[s.fishMost]) || DEFAULT_PIN_COLOR;
 }
 
-export default function App() {
+export default function App({ yandexKey = "" }: { yandexKey?: string }) {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -89,9 +79,7 @@ export default function App() {
   const [ready, setReady] = useState(false);
 
   const mapEl = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<LeafletTypes.Map | null>(null);
-  const LRef = useRef<typeof LeafletTypes | null>(null);
-  const markersRef = useRef<Map<number, LeafletTypes.Marker>>(new Map());
+  const engineRef = useRef<MapEngine | null>(null);
   const addingRef = useRef(false);
   const fittedRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -151,132 +139,96 @@ export default function App() {
     setNewSpot({ lat, lng });
   };
 
-  // Yangi (hali saqlanmagan) joy uchun vaqtinchalik belgi
-  const tempMarker = useRef<LeafletTypes.Marker | null>(null);
-  useEffect(() => {
-    const L = LRef.current;
-    const map = mapRef.current;
-    tempMarker.current?.remove();
-    tempMarker.current = null;
-    if (!L || !map || !newSpot) return;
-    tempMarker.current = L.marker([newSpot.lat, newSpot.lng], {
-      icon: pinIcon(L, "#e4473a", true),
-      zIndexOffset: 2000,
-    }).addTo(map);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-    map.invalidateSize();
-    if (map.getZoom() < 12) map.setView([newSpot.lat, newSpot.lng], 14, { animate: true });
-    else map.panTo([newSpot.lat, newSpot.lng], { animate: true });
-    return () => {
-      tempMarker.current?.remove();
-      tempMarker.current = null;
-    };
-  }, [newSpot, ready]);
-
   useEffect(() => {
     addingRef.current = adding;
   }, [adding]);
 
-  // Xaritani yaratish
+  // Xaritani yaratish: kalit bo'lsa Yandex, bo'lmasa (yoki yuklanmasa) Leaflet
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const mod = await import("leaflet");
-      const L = ((mod as unknown as { default?: typeof LeafletTypes }).default ?? mod) as typeof LeafletTypes;
-      if (cancelled || !mapEl.current || mapRef.current) return;
-      LRef.current = L;
-
-      const map = L.map(mapEl.current, { zoomControl: false, attributionControl: false }).setView(
-        [41.3, 69.27],
-        6
-      );
-      // Yengil va tinch ranglardagi xarita (qorong'i rejimda qorong'isi)
-      const dark = document.documentElement.dataset.theme === "dark";
-      const base = L.tileLayer(
-        `https://{s}.basemaps.cartocdn.com/${dark ? "dark_all" : "rastermaps/voyager"}/{z}/{x}/{y}{r}.png`,
-        { maxZoom: 19, subdomains: "abcd" }
-      );
-      const sat = L.tileLayer(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        { maxZoom: 19 }
-      );
-      base.addTo(map);
-      L.control.layers({ Xarita: base, "Sun'iy yo'ldosh": sat }, undefined, { position: "topright" }).addTo(map);
-      L.control
-        .attribution({ position: "bottomright", prefix: false })
-        .addAttribution("© OpenStreetMap, CARTO, Esri")
-        .addTo(map);
-      map.on("click", (e: LeafletTypes.LeafletMouseEvent) => {
-        if (addingRef.current) onMapClick.current(e.latlng.lat, e.latlng.lng);
-      });
-
-      mapRef.current = map;
-      map.fitBounds(UZ_BOUNDS, { animate: false });
+      const el = mapEl.current;
+      if (!el) return;
+      const handlers = {
+        onPinClick: (id: number) => setSelectedId(id),
+        onMapClick: (lat: number, lng: number) => {
+          if (addingRef.current) onMapClick.current(lat, lng);
+        },
+        dark: document.documentElement.dataset.theme === "dark",
+      };
+      let engine: MapEngine;
+      try {
+        engine = yandexKey
+          ? await createYandexEngine(el, yandexKey, handlers)
+          : await createLeafletEngine(el, handlers);
+      } catch {
+        engine = await createLeafletEngine(el, handlers);
+      }
+      if (cancelled) {
+        engine.destroy();
+        return;
+      }
+      engineRef.current = engine;
+      engine.fit(UZ_BOUNDS, false);
       setReady(true);
       setTimeout(() => {
-        map.invalidateSize();
-        map.fitBounds(UZ_BOUNDS, { animate: false });
-      }, 120);
+        engine.resize();
+        engine.fit(UZ_BOUNDS, false);
+      }, 150);
     })();
     return () => {
       cancelled = true;
-      mapRef.current?.remove();
-      mapRef.current = null;
-      markersRef.current.clear();
+      engineRef.current?.destroy();
+      engineRef.current = null;
     };
-  }, []);
+  }, [yandexKey]);
 
-  // Markerlarni yangilash
+  // Belgilarni yangilash
   useEffect(() => {
-    const L = LRef.current;
-    const map = mapRef.current;
-    if (!L || !map) return;
-
-    const seen = new Set<number>();
-    for (const s of spots) {
-      seen.add(s.id);
-      const icon = pinIcon(L, spotColor(s), s.id === selectedId);
-      let marker = markersRef.current.get(s.id);
-      if (!marker) {
-        marker = L.marker([s.lat, s.lng], { icon }).addTo(map);
-        marker.on("click", () => setSelectedId(s.id));
-        markersRef.current.set(s.id, marker);
-      } else {
-        marker.setLatLng([s.lat, s.lng]);
-        marker.setIcon(icon);
-      }
-      marker.setZIndexOffset(s.id === selectedId ? 1000 : 0);
-    }
-    markersRef.current.forEach((marker, id) => {
-      if (!seen.has(id)) {
-        marker.remove();
-        markersRef.current.delete(id);
-      }
-    });
+    engineRef.current?.setPins(
+      spots.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, color: spotColor(s) })),
+      selectedId
+    );
   }, [spots, ready, selectedId]);
 
+  // Yangi (hali saqlanmagan) joy: vaqtinchalik belgi va xarita shu nuqtaga o'tadi
+  useEffect(() => {
+    const e = engineRef.current;
+    if (!e) return;
+    e.setTemp(newSpot);
+    if (!newSpot) return;
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    e.resize();
+    if (e.zoom() < 12) e.focus(newSpot.lat, newSpot.lng, 14);
+    else e.pan(newSpot.lat, newSpot.lng);
+  }, [newSpot, ready]);
+
   const fitAll = useCallback(() => {
-    const map = mapRef.current;
-    if (!map || spots.length === 0) return;
-    map.fitBounds(
-      spots.map((s) => [s.lat, s.lng] as [number, number]),
-      { padding: [40, 40], maxZoom: 14 }
+    if (!engineRef.current || spots.length === 0) return;
+    const lats = spots.map((s) => s.lat);
+    const lngs = spots.map((s) => s.lng);
+    engineRef.current.fit(
+      [
+        [Math.min(...lats), Math.min(...lngs)],
+        [Math.max(...lats), Math.max(...lngs)],
+      ],
+      true,
+      14
     );
   }, [spots]);
 
   const fitUz = useCallback(() => {
-    mapRef.current?.fitBounds(UZ_BOUNDS, { animate: true });
+    engineRef.current?.fit(UZ_BOUNDS, true);
   }, []);
 
-  // Birinchi yuklanganda: ?spot=ID bo'lsa shu joy, aks holda butun O'zbekiston ko'rinadi
+  // Birinchi yuklanganda: ?new=lat,lng yoki ?spot=ID bo'lsa shu, aks holda butun O'zbekiston ko'rinadi
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !ready || !loaded || fittedRef.current) return;
+    if (!engineRef.current || !ready || !loaded || fittedRef.current) return;
     fittedRef.current = true;
 
     const params = new URLSearchParams(window.location.search);
 
-    // Botga lokatsiya yuborilganda: ?new=lat,lng — yangi joy varag'i shu nuqta bilan ochiladi
+    // Botga lokatsiya yuborilganda: yangi joy varag'i shu nuqta bilan ochiladi
     const [lat, lng] = (params.get("new") || "").split(",").map(Number);
     if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
       setNewSpot({ lat, lng });
@@ -299,13 +251,13 @@ export default function App() {
 
   // Joy tanlanganda: xarita unga uchadi, sahifa tepaga suriladi
   useEffect(() => {
-    const map = mapRef.current;
-    if (!map || selectedId === null) return;
+    const e = engineRef.current;
+    if (!e || selectedId === null) return;
     const s = spots.find((x) => x.id === selectedId);
     if (s) {
       window.scrollTo({ top: 0, behavior: "smooth" });
-      map.invalidateSize();
-      map.setView([s.lat, s.lng], Math.max(map.getZoom(), 15), { animate: true });
+      e.resize();
+      e.focus(s.lat, s.lng, 15);
     }
     // faqat tanlov o'zgarganda
     // eslint-disable-next-line react-hooks/exhaustive-deps
