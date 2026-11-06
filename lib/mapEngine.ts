@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import type * as LeafletTypes from "leaflet";
 
 /** [janubi-g'arb (lat, lng), shimoli-sharq (lat, lng)] */
@@ -12,7 +11,7 @@ export type Handlers = {
   dark: boolean;
 };
 
-/** Ikkala xarita (Yandex va Leaflet) bir xil usulda boshqariladi. */
+/** Xarita dvigateli: App shu interfeys orqali xaritani boshqaradi. */
 export type MapEngine = {
   fit: (b: Bounds, animate?: boolean, maxZoom?: number) => void;
   /** Joyga uchadi; kattalashtirish hozirgisidan kam bo'lmaydi, kamida minZoom. */
@@ -32,154 +31,61 @@ function pinHtml(color: string, selected: boolean): string {
   return `<div class="pinW ${selected ? "pinSel" : ""}"><i class="pin" style="--c:${color}"></i></div>`;
 }
 
-/* ------------------------------ Yandex Maps ------------------------------ */
-
-let ymapsPromise: Promise<any> | null = null;
-
-function loadYmaps(key: string): Promise<any> {
-  if (ymapsPromise) return ymapsPromise;
-  ymapsPromise = new Promise((resolve, reject) => {
-    const w = window as any;
-    if (w.ymaps) {
-      w.ymaps.ready(() => resolve(w.ymaps));
-      return;
-    }
-    const s = document.createElement("script");
-    s.src = `https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(key)}&lang=ru_RU`;
-    s.async = true;
-    s.onload = () => (w.ymaps ? w.ymaps.ready(() => resolve(w.ymaps)) : reject(new Error("Yandex Maps topilmadi")));
-    s.onerror = () => {
-      ymapsPromise = null;
-      reject(new Error("Yandex Maps yuklanmadi"));
-    };
-    document.head.appendChild(s);
-  });
-  return ymapsPromise;
-}
-
-export async function createYandexEngine(el: HTMLElement, key: string, h: Handlers): Promise<MapEngine> {
-  const ymaps = await loadYmaps(key);
-  const map = new ymaps.Map(
-    el,
-    { center: START_CENTER, zoom: 6, controls: ["typeSelector"] },
-    { suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true }
-  );
-
-  const layouts = new Map<string, any>();
-  const layoutFor = (color: string, selected: boolean) => {
-    const k = `${color}${selected ? 1 : 0}`;
-    let layout = layouts.get(k);
-    if (!layout) {
-      layout = ymaps.templateLayoutFactory.createClass(pinHtml(color, selected), {
-        getShape() {
-          return new ymaps.shape.Rectangle(new ymaps.geometry.pixel.Rectangle([[0, 0], [26, 30]]));
-        },
-      });
-      layouts.set(k, layout);
-    }
-    return layout;
-  };
-
-  const placemark = (lat: number, lng: number, color: string, selected: boolean) =>
-    new ymaps.Placemark(
-      [lat, lng],
-      {},
-      {
-        iconLayout: layoutFor(color, selected),
-        iconOffset: [-13, -27],
-        zIndex: selected ? 1000 : 100,
-        hasBalloon: false,
-        hasHint: false,
-        cursor: "pointer",
-      }
-    );
-
-  const pins = new Map<number, { pm: any; color: string; sel: boolean }>();
-  let temp: any = null;
-
-  map.events.add("click", (e: any) => {
-    const [lat, lng] = e.get("coords");
-    h.onMapClick(lat, lng);
-  });
-
-  return {
-    fit(b, animate = true, maxZoom) {
-      map
-        .setBounds(b, { checkZoomRange: true, zoomMargin: 30, duration: animate ? 300 : 0 })
-        .then(() => {
-          if (maxZoom && map.getZoom() > maxZoom) map.setZoom(maxZoom);
-        });
-    },
-    focus(lat, lng, minZoom) {
-      map.setCenter([lat, lng], Math.max(map.getZoom(), minZoom), { duration: 300 });
-    },
-    pan(lat, lng) {
-      map.panTo([lat, lng], { duration: 300 });
-    },
-    zoom: () => map.getZoom(),
-    setPins(list, selectedId) {
-      const seen = new Set<number>();
-      for (const p of list) {
-        seen.add(p.id);
-        const sel = p.id === selectedId;
-        const cur = pins.get(p.id);
-        if (!cur) {
-          const pm = placemark(p.lat, p.lng, p.color, sel);
-          pm.events.add("click", () => h.onPinClick(p.id));
-          map.geoObjects.add(pm);
-          pins.set(p.id, { pm, color: p.color, sel });
-        } else {
-          cur.pm.geometry.setCoordinates([p.lat, p.lng]);
-          if (cur.color !== p.color || cur.sel !== sel) {
-            cur.pm.options.set({ iconLayout: layoutFor(p.color, sel), zIndex: sel ? 1000 : 100 });
-            cur.color = p.color;
-            cur.sel = sel;
-          }
-        }
-      }
-      pins.forEach((v, id) => {
-        if (!seen.has(id)) {
-          map.geoObjects.remove(v.pm);
-          pins.delete(id);
-        }
-      });
-    },
-    setTemp(p) {
-      if (temp) {
-        map.geoObjects.remove(temp);
-        temp = null;
-      }
-      if (p) {
-        temp = placemark(p.lat, p.lng, TEMP_COLOR, true);
-        map.geoObjects.add(temp);
-      }
-    },
-    resize: () => map.container.fitToViewport(),
-    destroy: () => map.destroy(),
-  };
-}
-
-/* -------------------------- Leaflet (zaxira xarita) -------------------------- */
+/* ------------------------------ Leaflet xarita ------------------------------ */
 
 export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise<MapEngine> {
   const mod = await import("leaflet");
   const L = ((mod as unknown as { default?: typeof LeafletTypes }).default ?? mod) as typeof LeafletTypes;
 
   const map = L.map(el, { zoomControl: false, attributionControl: false }).setView(START_CENTER, 6);
-  const base = L.tileLayer(
+  // Bepul va kalitsiz xaritalar. Tanlangan ko'rinish eslab qolinadi.
+  const voyager = L.tileLayer(
     `https://{s}.basemaps.cartocdn.com/${h.dark ? "dark_all" : "rastermaps/voyager"}/{z}/{x}/{y}{r}.png`,
-    { maxZoom: 19, subdomains: "abcd" }
+    { maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO" }
   );
-  const sat = L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    { maxZoom: 19 }
-  );
-  base.addTo(map);
-  L.control.layers({ Xarita: base, "Sun'iy yo'ldosh": sat }, undefined, { position: "topright" }).addTo(map);
-  L.control
-    .attribution({ position: "bottomright", prefix: false })
-    .addAttribution("© OpenStreetMap, CARTO, Esri")
-    .addTo(map);
+  const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "© OpenStreetMap",
+  });
+  const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
+    maxZoom: 17,
+    subdomains: "abc",
+    attribution: "© OpenStreetMap, © OpenTopoMap",
+  });
+  const sat = L.layerGroup([
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19,
+      attribution: "© Esri",
+    }),
+    L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+      { maxZoom: 19 }
+    ),
+  ]);
+  const bases: Record<string, LeafletTypes.Layer> = {
+    Xarita: voyager,
+    Batafsil: osm,
+    Relyef: topo,
+    "Yo'ldosh": sat,
+  };
+
+  let saved = "";
+  try {
+    saved = localStorage.getItem("baliq-base") || "";
+  } catch {
+    /* saqlash mumkin emas */
+  }
+  (bases[saved] ?? voyager).addTo(map);
+
+  L.control.layers(bases, undefined, { position: "topright" }).addTo(map);
+  L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);
+  map.on("baselayerchange", (e: LeafletTypes.LayersControlEvent) => {
+    try {
+      localStorage.setItem("baliq-base", e.name);
+    } catch {
+      /* ixtiyoriy */
+    }
+  });
   map.on("click", (e: LeafletTypes.LeafletMouseEvent) => h.onMapClick(e.latlng.lat, e.latlng.lng));
 
   const icon = (color: string, selected: boolean) =>

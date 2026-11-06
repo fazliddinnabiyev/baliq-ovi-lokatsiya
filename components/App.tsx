@@ -4,7 +4,7 @@ import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client";
 import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS } from "@/lib/fish";
-import { createLeafletEngine, createYandexEngine, type Bounds, type MapEngine } from "@/lib/mapEngine";
+import { createLeafletEngine, type Bounds, type MapEngine } from "@/lib/mapEngine";
 import { OTHER_REGION, REGIONS, regionShort } from "@/lib/regions";
 import type { Spot } from "@/lib/types";
 import SpotSheet from "./SpotSheet";
@@ -65,7 +65,7 @@ function spotColor(s: Spot): string {
   return (s.fishMost && FISH_COLORS[s.fishMost]) || DEFAULT_PIN_COLOR;
 }
 
-export default function App({ yandexKey = "" }: { yandexKey?: string }) {
+export default function App() {
   const [spots, setSpots] = useState<Spot[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
@@ -143,7 +143,7 @@ export default function App({ yandexKey = "" }: { yandexKey?: string }) {
     addingRef.current = adding;
   }, [adding]);
 
-  // Xaritani yaratish: kalit bo'lsa Yandex, bo'lmasa (yoki yuklanmasa) Leaflet
+  // Xaritani yaratish
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -156,14 +156,7 @@ export default function App({ yandexKey = "" }: { yandexKey?: string }) {
         },
         dark: document.documentElement.dataset.theme === "dark",
       };
-      let engine: MapEngine;
-      try {
-        engine = yandexKey
-          ? await createYandexEngine(el, yandexKey, handlers)
-          : await createLeafletEngine(el, handlers);
-      } catch {
-        engine = await createLeafletEngine(el, handlers);
-      }
+      const engine: MapEngine = await createLeafletEngine(el, handlers);
       if (cancelled) {
         engine.destroy();
         return;
@@ -181,7 +174,7 @@ export default function App({ yandexKey = "" }: { yandexKey?: string }) {
       engineRef.current?.destroy();
       engineRef.current = null;
     };
-  }, [yandexKey]);
+  }, []);
 
   // Belgilarni yangilash
   useEffect(() => {
