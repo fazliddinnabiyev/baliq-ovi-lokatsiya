@@ -980,3 +980,47 @@ option:disabled {
 .cForm .primary {
   padding: 0 16px;
 }
+
+.dirItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 54px;
+}
+
+.dirIcon {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 15px;
+  color: #fff;
+  background: #6b7f84;
+}
+
+.di-google { background: #4285f4; }
+.di-yandex-maps { background: #fc3f1d; }
+.di-yandex-navi { background: #d4290c; }
+.di-2gis { background: #19aa1e; }
+.di-waze { background: #2ab7e6; }
+.di-apple { background: #1c1c1e; }
+
+.dirName {
+  flex: 1;
+  font-weight: 600;
+}
+
+.dirGo {
+  color: var(--muted);
+  font-size: 22px;
+}
+
+.dirCopy {
+  width: 100%;
+  margin-top: 12px;
+}
