@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { isAllowed } from "@/lib/auth";
 import { appUrl } from "@/lib/http";
 import { FISH, NONE } from "@/lib/fish";
 import { regionShort } from "@/lib/regions";
@@ -21,6 +20,24 @@ type Update = { message?: Msg };
 function openButton(base: string, label: string, query = "") {
   return { inline_keyboard: [[{ text: label, web_app: { url: `${base}/${query}` } }]] };
 }
+
+const GUIDE = (name: string) =>
+  `🎣 Assalomu alaykum${name}!\n\n` +
+  "Bu — baliqchilar uchun umumiy xarita. Har kim topgan joyini qo'shadi, hamma ko'radi va fikr bildiradi.\n\n" +
+  "📍 JOY QO'SHISH\n" +
+  "1. Chat pastidagi 📎 (skrepka) tugmasini bosing\n" +
+  "2. «Location» (Joylashuv) ni tanlang va baliq ovlagan joyingizni yuboring\n" +
+  "3. Bot «🎣 Joyni to'ldirish» tugmasini beradi, uni bosing\n" +
+  "4. Baliq turlarini tanlang (eng ko'p / o'rtacha / eng kam; baliq yo'q bo'lsa «Yo'q»), yem va vaqtni yozing, rasm qo'shing\n" +
+  "5. «Joyni saqlash» ni bosing — joy hammaga ko'rinadi\n\n" +
+  "🗺 XARITA\n" +
+  "• Pastdagi tugma orqali xaritani oching, joy belgisini bosing — baliq, yem, vaqt, rasmlar chiqadi\n" +
+  "• 🧭 Yo'nalish — Google Xarita, Yandex va boshqa navigatorlarda yo'l olish\n" +
+  "• ⬇️ Yuklab olish — boshqaning joyini o'z ro'yxatingizga nusxalash\n" +
+  "• 💬 Komment — joy egasiga savol yoki fikr yozing\n" +
+  "• 📤 Ulashish — do'stingizga aynan shu joyni yuboring\n\n" +
+  "✏️ Joy ma'lumotlarini faqat uning egasi o'zgartira oladi.\n\n" +
+  "Qayta ko'rish uchun /yordam buyrug'ini yuboring.";
 
 async function handleMessage(msg: Msg, base: string) {
   const chatId = msg.chat.id;
@@ -54,32 +71,23 @@ async function handleMessage(msg: Msg, base: string) {
     }
   }
 
-  if (!isAllowed(userId)) {
-    await tgCall("sendMessage", { chat_id: chatId, text: "Bu bot shaxsiy foydalanish uchun." });
-    return;
-  }
-
   // Lokatsiya kelganda hech narsa saqlanmaydi: Mini App shu nuqta bilan ochiladi,
   // baliq turlari tanlangandan keyingina joy saqlanadi.
   if (msg.location) {
     const { latitude, longitude } = msg.location;
     await tgCall("sendMessage", {
       chat_id: chatId,
-      text: "📍 Lokatsiya qabul qilindi.\nPastdagi tugmani bosing: baliq turlarini tanlab, joyni saqlaysiz.",
+      text: "📍 Lokatsiya qabul qilindi.\nPastdagi tugmani bosing: baliq turlarini tanlab, joyni saqlaysiz. Saqlangan joy hammaga ko'rinadi.",
       reply_markup: openButton(base, "🎣 Joyni to'ldirish", `?new=${latitude.toFixed(6)},${longitude.toFixed(6)}`),
     });
     return;
   }
 
-  if (text.startsWith("/start")) {
+  if (text.startsWith("/start") || /^\/(yordam|help)\b/.test(text)) {
     const name = msg.from?.first_name ? `, ${msg.from.first_name}` : "";
     await tgCall("sendMessage", {
       chat_id: chatId,
-      text:
-        `🎣 Assalomu alaykum${name}!\n\n` +
-        "Bu — sizning shaxsiy baliq ovi daftaringiz. Topgan joylaringiz bir xaritada jamlanadi va keyingi mavsumda esingizdan chiqmaydi.\n\n" +
-        "📍 Yangi joy qo'shish: menga lokatsiya yuboring (📎 → Location). Men Mini App'ni shu joy bilan ochib beraman.\n" +
-        "🗺 Saqlangan joylarni ko'rish: pastdagi tugmani bosing.",
+      text: GUIDE(name),
       reply_markup: openButton(base, "🗺 Xaritani ochish"),
     });
     return;

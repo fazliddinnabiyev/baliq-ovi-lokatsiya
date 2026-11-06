@@ -36,6 +36,7 @@ export async function GET(req: Request) {
     commands: [
       { command: "start", description: "Boshlash" },
       { command: "xarita", description: "Xaritani ochish" },
+      { command: "yordam", description: "Qanday foydalanish" },
     ],
   });
 

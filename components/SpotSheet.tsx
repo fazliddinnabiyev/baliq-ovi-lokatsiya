@@ -6,6 +6,7 @@ import { api, compressImage, confirmDialog, initData, openTelegramLink } from "@
 import { FISH, NONE, TIMES, validRanking } from "@/lib/fish";
 import { OTHER_REGION, REGIONS } from "@/lib/regions";
 import type { Media, Spot } from "@/lib/types";
+import Comments from "./Comments";
 import Directions from "./Directions";
 
 type Props = {
@@ -294,6 +295,8 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
           </button>
         )}
       </div>
+
+      {!isNew && <Comments spotId={spot.id} isOwner toast={toast} />}
 
       {dir && <Directions lat={spot.lat} lng={spot.lng} title={name.trim() || undefined} onClose={() => setDir(false)} />}
 

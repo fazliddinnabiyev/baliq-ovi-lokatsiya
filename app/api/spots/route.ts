@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
+import { displayName, requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { TIMES, validRanking } from "@/lib/fish";
 import { detectRegion } from "@/lib/geocode";
@@ -13,6 +13,8 @@ export async function GET(req: Request) {
   try {
     const user = requireUser(req);
     if (!user) return unauthorized();
+    // Eski joylarga egasining ismini yozib qo'yamiz (komment va ro'yxatda ko'rinishi uchun).
+    await query(`UPDATE spots SET owner_name = $1 WHERE owner_id = $2 AND owner_name = ''`, [displayName(user), String(user.id)]);
     return NextResponse.json(await listSpots(String(user.id)));
   } catch (e) {
     return fail(e);
@@ -42,8 +44,8 @@ export async function POST(req: Request) {
     const region = isRegion(body.region) ? body.region : await detectRegion(lat, lng);
 
     const r = await query<{ id: number }>(
-      `INSERT INTO spots (owner_id, lat, lng, name, region, fish_most, fish_mid, fish_least, bait, times, note)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
+      `INSERT INTO spots (owner_id, owner_name, lat, lng, name, region, fish_most, fish_mid, fish_least, bait, times, note)
+       VALUES ($1, $12, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`,
       [
         String(user.id),
         lat,
@@ -56,6 +58,7 @@ export async function POST(req: Request) {
         str(body.bait, 500),
         times,
         str(body.note, 3000),
+        displayName(user),
       ]
     );
     return NextResponse.json(await getSpot(r.rows[0].id, String(user.id)));

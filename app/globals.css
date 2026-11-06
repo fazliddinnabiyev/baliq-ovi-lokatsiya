@@ -886,3 +886,97 @@ option:disabled {
   width: 100%;
   margin-top: 14px;
 }
+
+/* Muallif va kommentlar */
+.byline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13.5px;
+  color: var(--muted);
+}
+
+.avatar {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 700;
+  background: var(--primary);
+  color: var(--primary-text);
+}
+
+.comments {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.comment {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.cBody {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.cBody p {
+  margin: 2px 0 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.cTime {
+  margin-left: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ownerTag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--panel2);
+  color: var(--muted);
+}
+
+.cDel {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 4px 6px;
+  font-size: 13px;
+}
+
+.cForm {
+  display: flex;
+  gap: 8px;
+}
+
+.cForm input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 11px 14px;
+  font-size: 15px;
+  background: var(--bg);
+  color: inherit;
+}
+
+.cForm .primary {
+  padding: 0 16px;
+}

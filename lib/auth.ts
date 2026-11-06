@@ -1,6 +1,11 @@
 import crypto from "crypto";
 
-export type TgUser = { id: number; first_name?: string; username?: string };
+export type TgUser = { id: number; first_name?: string; last_name?: string; username?: string };
+
+/** Ommaviy ko'rinadigan ism: Ism (yoki username). */
+export function displayName(u: TgUser): string {
+  return (u.first_name || u.username || "Foydalanuvchi").slice(0, 60);
+}
 
 /** Telegram Mini App initData imzosini tekshiradi. */
 export function verifyInitData(initData: string): TgUser | null {
@@ -46,5 +51,5 @@ export function isAllowed(userId: number): boolean {
 
 export function requireUser(req: Request): TgUser | null {
   const user = verifyInitData(req.headers.get("x-telegram-init-data") || "");
-  return user && isAllowed(user.id) ? user : null;
+  return user;
 }

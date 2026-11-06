@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { fail, notFound, unauthorized } from "@/lib/http";
-import { getSpot } from "@/lib/spots";
+import { getSpotPublic } from "@/lib/spots";
 import { botUsername } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
@@ -16,18 +16,17 @@ export async function POST(req: Request, ctx: Ctx) {
     const user = requireUser(req);
     if (!user) return unauthorized();
     const { id } = await ctx.params;
-    const owner = String(user.id);
-    const spot = await getSpot(Number(id), owner);
+    const spot = await getSpotPublic(Number(id), String(user.id));
     if (!spot) return notFound();
 
     const cur = await query<{ share_token: string | null }>(
-      `SELECT share_token FROM spots WHERE id = $1 AND owner_id = $2`,
-      [spot.id, owner]
+      `SELECT share_token FROM spots WHERE id = $1`,
+      [spot.id]
     );
     let token = cur.rows[0]?.share_token ?? null;
     if (!token) {
       token = crypto.randomBytes(8).toString("hex");
-      await query(`UPDATE spots SET share_token = $1 WHERE id = $2 AND owner_id = $3`, [token, spot.id, owner]);
+      await query(`UPDATE spots SET share_token = $1 WHERE id = $2`, [token, spot.id]);
     }
 
     const username = await botUsername();

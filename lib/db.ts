@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS spots (
 ALTER TABLE spots ADD COLUMN IF NOT EXISTS region TEXT;
 ALTER TABLE spots ADD COLUMN IF NOT EXISTS draft BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE spots ADD COLUMN IF NOT EXISTS share_token TEXT;
+ALTER TABLE spots ADD COLUMN IF NOT EXISTS owner_name TEXT NOT NULL DEFAULT '';
 CREATE UNIQUE INDEX IF NOT EXISTS spots_share_idx ON spots (share_token) WHERE share_token IS NOT NULL;
 CREATE INDEX IF NOT EXISTS spots_owner_idx ON spots (owner_id);
 CREATE TABLE IF NOT EXISTS spot_media (
@@ -30,6 +31,15 @@ CREATE TABLE IF NOT EXISTS spot_media (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS spot_media_spot_idx ON spot_media (spot_id);
+CREATE TABLE IF NOT EXISTS spot_comments (
+  id SERIAL PRIMARY KEY,
+  spot_id INT NOT NULL REFERENCES spots(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
+  user_name TEXT NOT NULL DEFAULT '',
+  text TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS spot_comments_spot_idx ON spot_comments (spot_id);
 `;
 
 const g = globalThis as unknown as {

@@ -7,7 +7,7 @@ import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS, isFish } from "@/lib/fish";
 import { createLeafletEngine, type Bounds, type MapEngine } from "@/lib/mapEngine";
 import { OTHER_REGION, REGIONS, regionShort } from "@/lib/regions";
 import type { Spot } from "@/lib/types";
-import SharedSheet from "./SharedSheet";
+import ViewSheet from "./ViewSheet";
 import SpotSheet from "./SpotSheet";
 
 // O'zbekiston chegaralari (janubi-g'arb, shimoli-sharq)
@@ -55,6 +55,9 @@ function blankSpot(lat: number, lng: number): Spot {
     createdAt: now,
     updatedAt: now,
     media: [],
+    ownerName: "",
+    mine: true,
+    commentCount: 0,
   };
 }
 
@@ -82,7 +85,7 @@ export default function App() {
   const [fishFilter, setFishFilter] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [newSpot, setNewSpot] = useState<{ lat: number; lng: number } | null>(null);
-  const [shared, setShared] = useState<{ token: string; spot: Spot } | null>(null);
+  const [onlyMine, setOnlyMine] = useState(false);
   const [message, setMessage] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -196,14 +199,14 @@ export default function App() {
   useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
-    const t = newSpot ?? (shared ? { lat: shared.spot.lat, lng: shared.spot.lng } : null);
+    const t = newSpot;
     e.setTemp(t);
     if (!t) return;
     window.scrollTo({ top: 0, behavior: "smooth" });
     e.resize();
     if (e.zoom() < 12) e.focus(t.lat, t.lng, 14);
     else e.pan(t.lat, t.lng);
-  }, [newSpot, shared, ready]);
+  }, [newSpot, ready]);
 
   const fitAll = useCallback(() => {
     if (!engineRef.current || spots.length === 0) return;
@@ -243,7 +246,10 @@ export default function App() {
     if (/^[a-f0-9]{16}$/.test(token)) {
       window.history.replaceState(null, "", window.location.pathname);
       api<Spot>(`/api/shared/${token}`)
-        .then((spot) => setShared({ token, spot }))
+        .then((spot) => {
+          setSpots((prev) => (prev.some((x) => x.id === spot.id) ? prev : [spot, ...prev]));
+          setSelectedId(spot.id);
+        })
         .catch(() => toast("Ulashilgan joy topilmadi"));
       return;
     }
@@ -255,11 +261,11 @@ export default function App() {
 
   // Varaq ochiq turganda orqa sahifa qotadi
   useEffect(() => {
-    document.body.style.overflow = selectedId !== null || newSpot || shared ? "hidden" : "";
+    document.body.style.overflow = selectedId !== null || newSpot ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [selectedId, newSpot, shared]);
+  }, [selectedId, newSpot]);
 
   // Joy tanlanganda: xarita unga uchadi, sahifa tepaga suriladi
   useEffect(() => {
@@ -306,16 +312,17 @@ export default function App() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return spots.filter((s) => {
+      if (onlyMine && !s.mine) return false;
       if (regionFilter && (s.region || OTHER_REGION) !== regionFilter) return false;
       if (!hasFish(s, fishFilter)) return false;
       if (!q) return true;
-      return [s.name, s.note, s.bait, s.region, ...allFish(s), `joy #${s.id}`]
+      return [s.name, s.note, s.bait, s.region, s.ownerName, ...allFish(s), `joy #${s.id}`]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
         .includes(q);
     });
-  }, [spots, search, fishFilter, regionFilter]);
+  }, [spots, search, fishFilter, regionFilter, onlyMine]);
 
   const onSaved = useCallback((updated: Spot) => {
     setSpots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
@@ -329,7 +336,7 @@ export default function App() {
   return (
     <div className="page">
       <header className="head">
-        <h1>Baliq joylarim</h1>
+        <h1>Baliq joylari</h1>
         <span className="count">{spots.length} ta joy</span>
       </header>
 
@@ -340,7 +347,7 @@ export default function App() {
             O'zbekiston
           </button>
           <button className="mapBtn" onClick={fitAll} disabled={spots.length === 0}>
-            Joylarim
+            Hamma joylar
           </button>
         </div>
         <button
@@ -366,6 +373,15 @@ export default function App() {
 
         {spots.length > 0 && (
           <>
+            <div className="filters" role="group" aria-label="Kimning joylari">
+              <button className={`fchip ${!onlyMine ? "fchipOn" : ""}`} onClick={() => setOnlyMine(false)}>
+                Hamma joylar
+              </button>
+              <button className={`fchip ${onlyMine ? "fchipOn" : ""}`} onClick={() => setOnlyMine(true)}>
+                Mening joylarim <b>{spots.filter((s) => s.mine).length}</b>
+              </button>
+            </div>
+
             <div className="filterLabel">Viloyat</div>
             <div className="filters" role="group" aria-label="Viloyat bo'yicha filtr">
               <button className={`fchip ${regionFilter === "" ? "fchipOn" : ""}`} onClick={() => setRegionFilter("")}>
@@ -404,7 +420,7 @@ export default function App() {
         {loaded && !error && spots.length === 0 && (
           <div className="notice">
             <strong>Hali joy yo'q.</strong>
-            <span>Botga lokatsiya yuboring yoki xaritada "Xaritadan belgilash" tugmasini bosing.</span>
+            <span>Birinchi bo'lib joy qo'shing: botga lokatsiya yuboring yoki "Xaritadan belgilash" ni bosing.</span>
           </div>
         )}
 
@@ -431,6 +447,10 @@ export default function App() {
                   </span>
                   <span className="rowBody">
                     <span className="rowTitle">{spotTitle(s)}</span>
+                    <span className="rowMeta">
+                      {s.mine ? "Siz qo'shgansiz" : s.ownerName || "Foydalanuvchi"}
+                      {s.commentCount > 0 && ` · 💬 ${s.commentCount}`}
+                    </span>
                     {!isComplete(s) ? (
                       <span className="warn">Baliq turlarini to'ldiring</span>
                     ) : allFish(s).length > 0 ? (
@@ -465,20 +485,7 @@ export default function App() {
         )}
       </section>
 
-      {shared && !newSpot ? (
-        <SharedSheet
-          key={shared.token}
-          spot={shared.spot}
-          token={shared.token}
-          onClose={() => setShared(null)}
-          onCopied={(mine) => {
-            setSpots((prev) => [mine, ...prev]);
-            setShared(null);
-            setSelectedId(mine.id);
-          }}
-          toast={toast}
-        />
-      ) : newSpot ? (
+      {newSpot ? (
         <SpotSheet
           key={`new-${newSpot.lat}-${newSpot.lng}`}
           isNew
@@ -494,7 +501,8 @@ export default function App() {
           toast={toast}
         />
       ) : (
-        selected && (
+        selected &&
+        (selected.mine ? (
           <SpotSheet
             key={selected.id}
             spot={selected}
@@ -503,7 +511,18 @@ export default function App() {
             onDeleted={onDeleted}
             toast={toast}
           />
-        )
+        ) : (
+          <ViewSheet
+            key={selected.id}
+            spot={selected}
+            onClose={() => setSelectedId(null)}
+            onCopied={(mine) => {
+              setSpots((prev) => (prev.some((x) => x.id === mine.id) ? prev : [mine, ...prev]));
+              setSelectedId(mine.id);
+            }}
+            toast={toast}
+          />
+        ))
       )}
 
       {message && <div className="toast">{message}</div>}

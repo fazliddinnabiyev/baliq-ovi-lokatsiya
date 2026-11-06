@@ -1,35 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import { api, openLink } from "@/lib/client";
+import { api, openLink, openTelegramLink } from "@/lib/client";
 import { NONE, isFish } from "@/lib/fish";
 import { regionShort } from "@/lib/regions";
 import type { Spot } from "@/lib/types";
+import Comments from "./Comments";
 import Directions from "./Directions";
 
 type Props = {
   spot: Spot;
-  token: string;
   onClose: () => void;
   onCopied: (spot: Spot) => void;
   toast: (msg: string) => void;
 };
 
-/** Do'st ulashgan joy: faqat ko'rish, yo'nalish olish va o'z ro'yxatiga saqlash. */
-export default function SharedSheet({ spot, token, onClose, onCopied, toast }: Props) {
+/** Boshqa foydalanuvchining joyi: faqat ko'rish, yo'nalish, yuklab olish va komment. */
+export default function ViewSheet({ spot, onClose, onCopied, toast }: Props) {
   const [dir, setDir] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function copy() {
     setSaving(true);
     try {
-      const mine = await api<Spot>(`/api/shared/${token}`, { method: "POST" });
-      toast("Joylaringizga saqlandi ✓");
+      const mine = await api<Spot>(`/api/spots/${spot.id}/copy`, { method: "POST" });
+      toast("Joylarimga yuklab olindi ✓");
       onCopied(mine);
     } catch (e) {
       toast((e as Error).message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function share() {
+    try {
+      const { url } = await api<{ url: string }>(`/api/spots/${spot.id}/share`, { method: "POST" });
+      const text = `🎣 ${spot.name || "Baliq ovi joyi"}: botga Start bosing, joy ochiladi`;
+      openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+    } catch (e) {
+      toast((e as Error).message);
     }
   }
 
@@ -43,7 +53,7 @@ export default function SharedSheet({ spot, token, onClose, onCopied, toast }: P
     <div className="sheet">
       <div className="grab" aria-hidden="true" />
       <div className="sheetHead">
-        <div className="nameInput sharedName">{spot.name || "Do'st ulashgan joy"}</div>
+        <div className="nameInput sharedName">{spot.name || `Joy #${spot.id}`}</div>
         <button className="iconBtn" onClick={onClose} aria-label="Yopish">
           ✕
         </button>
@@ -54,13 +64,24 @@ export default function SharedSheet({ spot, token, onClose, onCopied, toast }: P
         </span>
         {spot.region && <span className="regionTag">{regionShort(spot.region)}</span>}
       </div>
+      <div className="byline">
+        <span className="avatar" aria-hidden="true">
+          {(spot.ownerName || "?").slice(0, 1).toUpperCase()}
+        </span>
+        <span>
+          <b>{spot.ownerName || "Foydalanuvchi"}</b> qo'shgan
+        </span>
+      </div>
 
       <div className="quick">
         <button className="primary" onClick={() => setDir(true)}>
           🧭 Yo'nalish
         </button>
         <button className="ghost" onClick={copy} disabled={saving}>
-          {saving ? "Saqlanmoqda..." : "➕ Joylarimga saqlash"}
+          {saving ? "Yuklanmoqda..." : "⬇️ Yuklab olish"}
+        </button>
+        <button className="ghost" onClick={share}>
+          📤 Ulashish
         </button>
       </div>
 
@@ -123,6 +144,8 @@ export default function SharedSheet({ spot, token, onClose, onCopied, toast }: P
           </div>
         </div>
       )}
+
+      <Comments spotId={spot.id} isOwner={false} toast={toast} />
 
       {dir && <Directions lat={spot.lat} lng={spot.lng} title={spot.name || undefined} onClose={() => setDir(false)} />}
     </div>

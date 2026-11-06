@@ -19,4 +19,19 @@ export type Spot = {
   createdAt: string;
   updatedAt: string;
   media: Media[];
+  ownerName: string;
+  /** true: joy shu foydalanuvchiniki (faqat egasi o'zgartira oladi) */
+  mine: boolean;
+  commentCount: number;
+};
+
+export type Comment = {
+  id: number;
+  userName: string;
+  text: string;
+  createdAt: string;
+  /** true: shu foydalanuvchining komenti */
+  mine: boolean;
+  /** true: komment joy egasiniki */
+  byOwner: boolean;
 };
