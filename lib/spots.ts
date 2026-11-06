@@ -1,5 +1,5 @@
 import { query } from "./db";
-import { isFish } from "./fish";
+import { isFishOrNone } from "./fish";
 import { nearestRegion } from "./regions";
 import type { Spot } from "./types";
 
@@ -27,9 +27,9 @@ const SPOT_SELECT = `
 /** Eski ma'lumotlarni tuzatadi: noma'lum baliq nomi bo'sh bo'ladi, viloyati yo'q joyga viloyat yoziladi. */
 async function tidy(rows: Spot[]): Promise<Spot[]> {
   for (const r of rows) {
-    if (!isFish(r.fishMost)) r.fishMost = null;
-    if (!isFish(r.fishMid)) r.fishMid = null;
-    if (!isFish(r.fishLeast)) r.fishLeast = null;
+    if (!isFishOrNone(r.fishMost)) r.fishMost = null;
+    if (!isFishOrNone(r.fishMid)) r.fishMid = null;
+    if (!isFishOrNone(r.fishLeast)) r.fishLeast = null;
     if (!r.region) {
       r.region = nearestRegion(r.lat, r.lng);
       await query(`UPDATE spots SET region = $1 WHERE id = $2`, [r.region, r.id]);
@@ -53,6 +53,17 @@ export async function getSpot(id: number, ownerId: string, includeDraft = false)
     `SELECT ${SPOT_SELECT} FROM spots s
      WHERE s.id = $1 AND s.owner_id = $2 AND ($3::boolean OR s.draft = false)`,
     [id, ownerId, includeDraft]
+  );
+  const rows = await tidy(r.rows);
+  return rows[0] ?? null;
+}
+
+/** Ulashilgan havola (token) bo'yicha joy; faqat ko'rish uchun. */
+export async function getSpotByToken(token: string): Promise<Spot | null> {
+  if (!/^[a-f0-9]{16}$/.test(token)) return null;
+  const r = await query<Spot>(
+    `SELECT ${SPOT_SELECT} FROM spots s WHERE s.share_token = $1 AND s.draft = false`,
+    [token]
   );
   const rows = await tidy(r.rows);
   return rows[0] ?? null;

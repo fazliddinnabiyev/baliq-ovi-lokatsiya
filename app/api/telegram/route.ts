@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { isAllowed } from "@/lib/auth";
 import { appUrl } from "@/lib/http";
+import { FISH, NONE } from "@/lib/fish";
+import { regionShort } from "@/lib/regions";
 import { webhookSecret } from "@/lib/secret";
+import { getSpotByToken } from "@/lib/spots";
 import { tgCall } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +27,33 @@ async function handleMessage(msg: Msg, base: string) {
   const userId = msg.from?.id;
   if (!userId) return;
 
+  const text = (msg.text || "").trim();
+
+  // Do'st ulashgan joy: /start s_<token>. Hamma ochishi mumkin (faqat ko'rish uchun).
+  const shared = text.match(/^\/start(?:@\w+)?\s+s_([a-f0-9]{16})$/);
+  if (shared) {
+    const spot = await getSpotByToken(shared[1]);
+    if (spot) {
+      const fish = [
+        ["🥇", "Eng ko'p", spot.fishMost],
+        ["🥈", "O'rtacha", spot.fishMid],
+        ["🥉", "Eng kam", spot.fishLeast],
+      ]
+        .filter((f) => f[2] && (FISH as readonly string[]).includes(f[2] as string))
+        .map((f) => `${f[0]} ${f[1]}: ${f[2]}`);
+      await tgCall("sendMessage", {
+        chat_id: chatId,
+        text:
+          `🎣 Do'stingiz baliq ovi joyini ulashdi${spot.name ? `: ${spot.name}` : ""}\n` +
+          `📍 ${regionShort(spot.region) || "O'zbekiston"}\n` +
+          (fish.length ? `\n${fish.join("\n")}\n` : spot.fishMost === NONE ? "\nBu joyda baliq deyarli yo'q.\n" : "") +
+          `\nYo'nalish, yem, vaqt va rasmlar Mini App'da. Pastdagi tugmani bosing.`,
+        reply_markup: openButton(base, "🎣 Joyni ko'rish", `?shared=${shared[1]}`),
+      });
+      return;
+    }
+  }
+
   if (!isAllowed(userId)) {
     await tgCall("sendMessage", { chat_id: chatId, text: "Bu bot shaxsiy foydalanish uchun." });
     return;
@@ -41,7 +71,6 @@ async function handleMessage(msg: Msg, base: string) {
     return;
   }
 
-  const text = (msg.text || "").trim();
   if (text.startsWith("/start")) {
     const name = msg.from?.first_name ? `, ${msg.from.first_name}` : "";
     await tgCall("sendMessage", {

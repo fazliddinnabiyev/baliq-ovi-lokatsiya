@@ -2,10 +2,11 @@
 
 import { upload } from "@vercel/blob/client";
 import { useRef, useState } from "react";
-import { api, compressImage, confirmDialog, initData, openLink } from "@/lib/client";
-import { FISH, TIMES, validRanking } from "@/lib/fish";
+import { api, compressImage, confirmDialog, initData, openTelegramLink } from "@/lib/client";
+import { FISH, NONE, TIMES, validRanking } from "@/lib/fish";
 import { OTHER_REGION, REGIONS } from "@/lib/regions";
 import type { Media, Spot } from "@/lib/types";
+import Directions from "./Directions";
 
 type Props = {
   spot: Spot;
@@ -31,6 +32,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
   const [saving, setSaving] = useState(false);
   const [progress, setProgress] = useState("");
   const [viewer, setViewer] = useState<Media | null>(null);
+  const [dir, setDir] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const fishValid = validRanking(fishMost, fishMid, fishLeast);
@@ -74,6 +76,16 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
       toast((e as Error).message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function share() {
+    try {
+      const { url } = await api<{ url: string }>(`/api/spots/${spot.id}/share`, { method: "POST" });
+      const text = `🎣 ${name.trim() || "Baliq ovi joyi"}: botga Start bosing, joy ochiladi`;
+      openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
+    } catch (e) {
+      toast((e as Error).message);
     }
   }
 
@@ -136,6 +148,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
       </span>
       <select value={value} onChange={(e) => set(e.target.value)} className={value ? "" : "needs"}>
         <option value="">Tanlang</option>
+        <option value={NONE}>{NONE}</option>
         {FISH.map((f) => (
           <option key={f} value={f} disabled={f !== value && chosen.includes(f)}>
             {f}
@@ -162,29 +175,29 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
       </div>
 
       <div className="coords">
-        📍 {spot.lat.toFixed(5)}, {spot.lng.toFixed(5)}
-        <span className="links">
-          <button
-            className="linkBtn"
-            onClick={() => openLink(`https://www.google.com/maps/search/?api=1&query=${spot.lat},${spot.lng}`)}
-          >
-            Google
-          </button>
-          <button
-            className="linkBtn"
-            onClick={() => openLink(`https://yandex.com/maps/?pt=${spot.lng},${spot.lat}&z=16&l=sat,skl`)}
-          >
-            Yandex
-          </button>
+        <span>
+          📍 {spot.lat.toFixed(5)}, {spot.lng.toFixed(5)}
         </span>
       </div>
 
+      {!isNew && (
+        <div className="quick">
+          <button className="ghost" onClick={() => setDir(true)}>
+            🧭 Yo'nalish
+          </button>
+          <button className="ghost" onClick={share}>
+            📤 Ulashish
+          </button>
+        </div>
+      )}
+
       <div className="section">
         <h3>🐟 Qaysi baliq ko'proq? (majburiy)</h3>
+        <p className="hint hintTop">Baliq deyarli bo'lmasa, "Yo'q" ni tanlang.</p>
         {fishSelect("🥇", "Eng ko'p", fishMost, setFishMost)}
         {fishSelect("🥈", "O'rtacha", fishMid, setFishMid)}
         {fishSelect("🥉", "Eng kam", fishLeast, setFishLeast)}
-        {!fishValid && <p className="req">Uchala baliq turini ham tanlang. Har biri har xil bo'lishi kerak.</p>}
+        {!fishValid && <p className="req">Uchala qatorni ham tanlang. Baliq turlari takrorlanmasligi kerak ("Yo'q" takrorlanishi mumkin).</p>}
       </div>
 
       <div className="section">
@@ -281,6 +294,8 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
           </button>
         )}
       </div>
+
+      {dir && <Directions lat={spot.lat} lng={spot.lng} title={name.trim() || undefined} onClose={() => setDir(false)} />}
 
       {viewer && (
         <div className="viewer" onClick={() => setViewer(null)}>

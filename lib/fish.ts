@@ -11,11 +11,23 @@ export const FISH_COLORS: Record<string, string> = {
 };
 export const DEFAULT_PIN_COLOR = "#6b7f84";
 
+/** "Yo'q": bu darajada baliq deyarli uchramaydi. Bir necha darajada takrorlanishi mumkin. */
+export const NONE = "Yo'q";
+
 export function isFish(v: unknown): v is (typeof FISH)[number] {
   return typeof v === "string" && (FISH as readonly string[]).includes(v);
 }
 
-/** Eng ko'p, o'rtacha va eng kam baliq: uchalasi tanlangan va bir-biridan farqli bo'lishi shart. */
+export function isFishOrNone(v: unknown): v is string {
+  return v === NONE || isFish(v);
+}
+
+/**
+ * Eng ko'p, o'rtacha va eng kam: har biri baliq turi yoki "Yo'q" bo'lishi shart (bo'sh qoldirib bo'lmaydi).
+ * Haqiqiy baliq turlari bir-biridan farqli bo'lishi kerak, "Yo'q" esa takrorlanishi mumkin.
+ */
 export function validRanking(a: unknown, b: unknown, c: unknown): boolean {
-  return isFish(a) && isFish(b) && isFish(c) && a !== b && a !== c && b !== c;
+  if (!isFishOrNone(a) || !isFishOrNone(b) || !isFishOrNone(c)) return false;
+  const real = [a, b, c].filter(isFish);
+  return new Set(real).size === real.length;
 }

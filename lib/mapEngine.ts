@@ -39,9 +39,9 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
 
   const map = L.map(el, { zoomControl: false, attributionControl: false }).setView(START_CENTER, 6);
   // Bepul va kalitsiz xaritalar. Tanlangan ko'rinish eslab qolinadi.
-  const voyager = L.tileLayer(
-    `https://{s}.basemaps.cartocdn.com/${h.dark ? "dark_all" : "rastermaps/voyager"}/{z}/{x}/{y}{r}.png`,
-    { maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap, © CARTO" }
+  const street = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 19, attribution: "© Esri, HERE, Garmin, OpenStreetMap" }
   );
   const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19,
@@ -63,7 +63,7 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
     ),
   ]);
   const bases: Record<string, LeafletTypes.Layer> = {
-    Xarita: voyager,
+    Xarita: street,
     Batafsil: osm,
     Relyef: topo,
     "Yo'ldosh": sat,
@@ -75,7 +75,7 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
   } catch {
     /* saqlash mumkin emas */
   }
-  (bases[saved] ?? voyager).addTo(map);
+  (bases[saved] ?? street).addTo(map);
 
   L.control.layers(bases, undefined, { position: "topright" }).addTo(map);
   L.control.attribution({ position: "bottomright", prefix: false }).addTo(map);

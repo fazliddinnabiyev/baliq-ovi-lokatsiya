@@ -6,3 +6,15 @@ export async function tgCall(method: string, body: Record<string, unknown>) {
   });
   return res.json();
 }
+
+let cachedUsername: string | null = null;
+
+/** Botning @username'i (ulashish havolasi uchun). */
+export async function botUsername(): Promise<string> {
+  if (cachedUsername) return cachedUsername;
+  const r = await tgCall("getMe", {});
+  const u = r?.result?.username;
+  if (!u) throw new Error("Bot nomi aniqlanmadi");
+  cachedUsername = u;
+  return u;
+}

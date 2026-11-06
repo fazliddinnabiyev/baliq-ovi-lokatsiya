@@ -22,6 +22,18 @@ export function openLink(url: string) {
   else window.open(url, "_blank");
 }
 
+/** Havola tashqi brauzer/ilovada ochiladi; ilova sxemalari (yandexnavi:// va h.k.) to'g'ridan-to'g'ri. */
+export function openExternal(url: string) {
+  if (/^https?:/i.test(url)) openLink(url);
+  else window.location.href = url;
+}
+
+export function openTelegramLink(url: string) {
+  const w = window.Telegram?.WebApp;
+  if (w?.openTelegramLink) w.openTelegramLink(url);
+  else window.open(url, "_blank");
+}
+
 export function confirmDialog(message: string): Promise<boolean> {
   const w = window.Telegram?.WebApp;
   if (w?.showConfirm) {

@@ -3,10 +3,11 @@
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client";
-import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS } from "@/lib/fish";
+import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS, isFish } from "@/lib/fish";
 import { createLeafletEngine, type Bounds, type MapEngine } from "@/lib/mapEngine";
 import { OTHER_REGION, REGIONS, regionShort } from "@/lib/regions";
 import type { Spot } from "@/lib/types";
+import SharedSheet from "./SharedSheet";
 import SpotSheet from "./SpotSheet";
 
 // O'zbekiston chegaralari (janubi-g'arb, shimoli-sharq)
@@ -27,8 +28,14 @@ function spotTitle(s: Spot): string {
   return s.name || `Joy #${s.id}`;
 }
 
+/** Haqiqiy baliq turlari ("Yo'q" hisobga olinmaydi). */
 function allFish(s: Spot): string[] {
-  return [s.fishMost, s.fishMid, s.fishLeast].filter((x): x is string => !!x);
+  return [s.fishMost, s.fishMid, s.fishLeast].filter((x): x is string => isFish(x));
+}
+
+/** Uchala qator ham tanlangan bo'lsa to'liq ("Yo'q" ham tanlov hisoblanadi). */
+function isComplete(s: Spot): boolean {
+  return !!s.fishMost && !!s.fishMid && !!s.fishLeast;
 }
 
 function blankSpot(lat: number, lng: number): Spot {
@@ -75,6 +82,7 @@ export default function App() {
   const [fishFilter, setFishFilter] = useState("");
   const [regionFilter, setRegionFilter] = useState("");
   const [newSpot, setNewSpot] = useState<{ lat: number; lng: number } | null>(null);
+  const [shared, setShared] = useState<{ token: string; spot: Spot } | null>(null);
   const [message, setMessage] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -188,13 +196,14 @@ export default function App() {
   useEffect(() => {
     const e = engineRef.current;
     if (!e) return;
-    e.setTemp(newSpot);
-    if (!newSpot) return;
+    const t = newSpot ?? (shared ? { lat: shared.spot.lat, lng: shared.spot.lng } : null);
+    e.setTemp(t);
+    if (!t) return;
     window.scrollTo({ top: 0, behavior: "smooth" });
     e.resize();
-    if (e.zoom() < 12) e.focus(newSpot.lat, newSpot.lng, 14);
-    else e.pan(newSpot.lat, newSpot.lng);
-  }, [newSpot, ready]);
+    if (e.zoom() < 12) e.focus(t.lat, t.lng, 14);
+    else e.pan(t.lat, t.lng);
+  }, [newSpot, shared, ready]);
 
   const fitAll = useCallback(() => {
     if (!engineRef.current || spots.length === 0) return;
@@ -229,18 +238,28 @@ export default function App() {
       return;
     }
 
+    // Do'st ulashgan joy: ?shared=token
+    const token = params.get("shared") || "";
+    if (/^[a-f0-9]{16}$/.test(token)) {
+      window.history.replaceState(null, "", window.location.pathname);
+      api<Spot>(`/api/shared/${token}`)
+        .then((spot) => setShared({ token, spot }))
+        .catch(() => toast("Ulashilgan joy topilmadi"));
+      return;
+    }
+
     const want = Number(params.get("spot"));
     const target = spots.find((s) => s.id === want);
     if (target) setSelectedId(target.id);
-  }, [ready, loaded, spots]);
+  }, [ready, loaded, spots, toast]);
 
   // Varaq ochiq turganda orqa sahifa qotadi
   useEffect(() => {
-    document.body.style.overflow = selectedId !== null || newSpot ? "hidden" : "";
+    document.body.style.overflow = selectedId !== null || newSpot || shared ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [selectedId, newSpot]);
+  }, [selectedId, newSpot, shared]);
 
   // Joy tanlanganda: xarita unga uchadi, sahifa tepaga suriladi
   useEffect(() => {
@@ -412,11 +431,14 @@ export default function App() {
                   </span>
                   <span className="rowBody">
                     <span className="rowTitle">{spotTitle(s)}</span>
-                    {allFish(s).length > 0 ? (
+                    {!isComplete(s) ? (
+                      <span className="warn">Baliq turlarini to'ldiring</span>
+                    ) : allFish(s).length > 0 ? (
                       <span className="fishLine">
                         {fish.map(
                           ([name, n]) =>
-                            name && (
+                            name &&
+                            isFish(name) && (
                               <span key={name} className="fish">
                                 {name}
                                 <Level n={n} />
@@ -425,7 +447,7 @@ export default function App() {
                         )}
                       </span>
                     ) : (
-                      <span className="warn">Baliq turlarini to'ldiring</span>
+                      <span className="rowMeta">Bu joyda baliq yo'q</span>
                     )}
                     <span className="rowMeta">
                       {s.region && <span className="regionTag">{regionShort(s.region)}</span>}
@@ -443,7 +465,20 @@ export default function App() {
         )}
       </section>
 
-      {newSpot ? (
+      {shared && !newSpot ? (
+        <SharedSheet
+          key={shared.token}
+          spot={shared.spot}
+          token={shared.token}
+          onClose={() => setShared(null)}
+          onCopied={(mine) => {
+            setSpots((prev) => [mine, ...prev]);
+            setShared(null);
+            setSelectedId(mine.id);
+          }}
+          toast={toast}
+        />
+      ) : newSpot ? (
         <SpotSheet
           key={`new-${newSpot.lat}-${newSpot.lng}`}
           isNew
