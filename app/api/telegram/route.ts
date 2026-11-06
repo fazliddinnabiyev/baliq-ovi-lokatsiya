@@ -32,7 +32,7 @@ const GUIDE = (name: string) =>
   "5. «Joyni saqlash» ni bosing — joy hammaga ko'rinadi\n\n" +
   "🗺 XARITA\n" +
   "• Pastdagi tugma orqali xaritani oching, joy belgisini bosing — baliq, yem, vaqt, rasmlar chiqadi\n" +
-  "• 🧭 Yo'nalish — Google Xarita, Yandex va boshqa navigatorlarda yo'l olish\n" +
+  "• 🧭 Qanday boriladi — Google Xarita, Yandex va boshqa navigatorlarda yo'l olish\n" +
   "• ⬇️ Yuklab olish — boshqaning joyini o'z ro'yxatingizga nusxalash\n" +
   "• 💬 Komment — joy egasiga savol yoki fikr yozing\n" +
   "• 📤 Ulashish — do'stingizga aynan shu joyni yuboring\n\n" +
@@ -64,7 +64,7 @@ async function handleMessage(msg: Msg, base: string) {
           `🎣 Do'stingiz baliq ovi joyini ulashdi${spot.name ? `: ${spot.name}` : ""}\n` +
           `📍 ${regionShort(spot.region) || "O'zbekiston"}\n` +
           (fish.length ? `\n${fish.join("\n")}\n` : spot.fishMost === NONE ? "\nBu joyda baliq deyarli yo'q.\n" : "") +
-          `\nYo'nalish, yem, vaqt va rasmlar Mini App'da. Pastdagi tugmani bosing.`,
+          `\nYo'l, yem, vaqt va rasmlar Mini App'da. Pastdagi tugmani bosing.`,
         reply_markup: openButton(base, "🎣 Joyni ko'rish", `?shared=${shared[1]}`),
       });
       return;

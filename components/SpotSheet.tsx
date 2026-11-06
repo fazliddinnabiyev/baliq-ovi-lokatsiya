@@ -184,7 +184,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
       {!isNew && (
         <div className="quick">
           <button className="ghost" onClick={() => setDir(true)}>
-            🧭 Yo'nalish
+            🧭 Qanday boriladi
           </button>
           <button className="ghost" onClick={share}>
             📤 Ulashish

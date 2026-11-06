@@ -75,7 +75,7 @@ export default function ViewSheet({ spot, onClose, onCopied, toast }: Props) {
 
       <div className="quick">
         <button className="primary" onClick={() => setDir(true)}>
-          🧭 Yo'nalish
+          🧭 Qanday boriladi
         </button>
         <button className="ghost" onClick={copy} disabled={saving}>
           {saving ? "Yuklanmoqda..." : "⬇️ Yuklab olish"}
