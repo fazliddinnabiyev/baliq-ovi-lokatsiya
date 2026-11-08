@@ -1034,3 +1034,22 @@ option:disabled {
   background: var(--panel2);
   color: var(--text);
 }
+
+.meDot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2f80c9;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 0 rgba(47, 128, 201, 0.6), 0 1px 5px rgba(0, 0, 0, 0.4);
+  animation: mePulse 2s infinite;
+}
+
+@keyframes mePulse {
+  70% {
+    box-shadow: 0 0 0 14px rgba(47, 128, 201, 0), 0 1px 5px rgba(0, 0, 0, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(47, 128, 201, 0), 0 1px 5px rgba(0, 0, 0, 0.4);
+  }
+}

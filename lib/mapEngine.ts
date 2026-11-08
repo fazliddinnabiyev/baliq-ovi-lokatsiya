@@ -20,6 +20,8 @@ export type MapEngine = {
   zoom: () => number;
   setPins: (pins: Pin[], selectedId: number | null) => void;
   setTemp: (p: { lat: number; lng: number } | null) => void;
+  /** Foydalanuvchining o'z joylashuvi (ko'k nuqta) */
+  setMe: (p: { lat: number; lng: number; accuracy: number } | null) => void;
   resize: () => void;
   destroy: () => void;
 };
@@ -93,6 +95,7 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
 
   const pins = new Map<number, { marker: LeafletTypes.Marker; color: string; sel: boolean }>();
   let temp: LeafletTypes.Marker | null = null;
+  let me: { dot: LeafletTypes.Marker; ring: LeafletTypes.Circle } | null = null;
 
   return {
     fit(b, animate = true, maxZoom) {
@@ -136,6 +139,33 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
       temp?.remove();
       temp = null;
       if (p) temp = L.marker([p.lat, p.lng], { icon: icon(TEMP_COLOR, true), zIndexOffset: 2000 }).addTo(map);
+    },
+    setMe(p) {
+      if (!p) {
+        me?.dot.remove();
+        me?.ring.remove();
+        me = null;
+        return;
+      }
+      if (!me) {
+        const ring = L.circle([p.lat, p.lng], {
+          radius: p.accuracy,
+          stroke: false,
+          fillColor: "#2f80c9",
+          fillOpacity: 0.15,
+          interactive: false,
+        }).addTo(map);
+        const dot = L.marker([p.lat, p.lng], {
+          icon: L.divIcon({ className: "", html: '<div class="meDot"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }),
+          zIndexOffset: 3000,
+          interactive: false,
+        }).addTo(map);
+        me = { dot, ring };
+      } else {
+        me.dot.setLatLng([p.lat, p.lng]);
+        me.ring.setLatLng([p.lat, p.lng]);
+        me.ring.setRadius(p.accuracy);
+      }
     },
     resize: () => map.invalidateSize(),
     destroy: () => map.remove(),

@@ -225,14 +225,6 @@ export default function App() {
     };
   }, []);
 
-  // Belgilarni yangilash
-  useEffect(() => {
-    engineRef.current?.setPins(
-      spots.map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, color: spotColor(s) })),
-      selectedId
-    );
-  }, [spots, ready, selectedId]);
-
   // Yangi (hali saqlanmagan) joy: vaqtinchalik belgi va xarita shu nuqtaga o'tadi
   useEffect(() => {
     const e = engineRef.current;
@@ -245,20 +237,6 @@ export default function App() {
     if (e.zoom() < 12) e.focus(t.lat, t.lng, 14);
     else e.pan(t.lat, t.lng);
   }, [newSpot, ready]);
-
-  const fitAll = useCallback(() => {
-    if (!engineRef.current || spots.length === 0) return;
-    const lats = spots.map((s) => s.lat);
-    const lngs = spots.map((s) => s.lng);
-    engineRef.current.fit(
-      [
-        [Math.min(...lats), Math.min(...lngs)],
-        [Math.max(...lats), Math.max(...lngs)],
-      ],
-      true,
-      14
-    );
-  }, [spots]);
 
   const fitUz = useCallback(() => {
     engineRef.current?.fit(UZ_BOUNDS, true);
@@ -383,6 +361,66 @@ export default function App() {
     });
   }, [spots, search, fishFilter, regionFilter, onlyMine]);
 
+  // Xaritada faqat filtrga tushganlar ko'rinadi (tanlangan joy doim ko'rinadi)
+  useEffect(() => {
+    const visible = filtered;
+    const sel = selectedId !== null && !visible.some((s) => s.id === selectedId) ? spots.find((s) => s.id === selectedId) : null;
+    engineRef.current?.setPins(
+      (sel ? [...visible, sel] : visible).map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, color: spotColor(s) })),
+      selectedId
+    );
+  }, [filtered, spots, ready, selectedId]);
+
+  const fitAll = useCallback(() => {
+    if (!engineRef.current || filtered.length === 0) return;
+    const lats = filtered.map((s) => s.lat);
+    const lngs = filtered.map((s) => s.lng);
+    engineRef.current.fit(
+      [
+        [Math.min(...lats), Math.min(...lngs)],
+        [Math.max(...lats), Math.max(...lngs)],
+      ],
+      true,
+      14
+    );
+  }, [filtered]);
+
+  // Mening joylashuvim
+  const watchRef = useRef<number | null>(null);
+  const [locating, setLocating] = useState(false);
+  const locateMe = useCallback(() => {
+    if (!navigator.geolocation) {
+      toast("Bu qurilmada joylashuv aniqlanmaydi");
+      return;
+    }
+    setLocating(true);
+    let first = true;
+    if (watchRef.current !== null) navigator.geolocation.clearWatch(watchRef.current);
+    watchRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+        engineRef.current?.setMe({ lat, lng, accuracy });
+        if (first) {
+          first = false;
+          setLocating(false);
+          engineRef.current?.focus(lat, lng, 13);
+        }
+      },
+      () => {
+        setLocating(false);
+        toast("Joylashuv ruxsati berilmadi. Telefon sozlamalarida Telegram uchun joylashuvni yoqing.");
+      },
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+    );
+  }, [toast]);
+
+  useEffect(
+    () => () => {
+      if (watchRef.current !== null) navigator.geolocation?.clearWatch(watchRef.current);
+    },
+    []
+  );
+
   const onSaved = useCallback((updated: Spot) => {
     setSpots((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
   }, []);
@@ -405,8 +443,11 @@ export default function App() {
           <button className="mapBtn" onClick={fitUz}>
             O'zbekiston
           </button>
-          <button className="mapBtn" onClick={fitAll} disabled={spots.length === 0}>
-            Hamma joylar
+          <button className="mapBtn" onClick={fitAll} disabled={filtered.length === 0}>
+            Joylar
+          </button>
+          <button className="mapBtn" onClick={locateMe} disabled={locating}>
+            {locating ? "Aniqlanmoqda..." : "📍 Men"}
           </button>
         </div>
         <button
