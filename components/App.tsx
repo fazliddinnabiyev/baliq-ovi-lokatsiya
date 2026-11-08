@@ -2,7 +2,7 @@
 
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "@/lib/client";
+import { api, initData } from "@/lib/client";
 import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS, isFish } from "@/lib/fish";
 import { createLeafletEngine, type Bounds, type MapEngine } from "@/lib/mapEngine";
 import { OTHER_REGION, REGIONS, regionShort } from "@/lib/regions";
@@ -166,6 +166,28 @@ export default function App() {
     } catch {
       /* eski Telegram versiyasi */
     }
+  }, [locked]);
+
+  // Yakunlanmagan joy bilan ilovadan chiqib ketilsa (yopildi yoki boshqa ilovaga o'tildi): bot darrov eslatadi
+  useEffect(() => {
+    if (!locked) return;
+    let sent = 0;
+    const leave = () => {
+      if (Date.now() - sent < 5000) return;
+      sent = Date.now();
+      try {
+        navigator.sendBeacon(`/api/pending/left?init=${encodeURIComponent(initData())}`);
+      } catch {
+        /* ixtiyoriy */
+      }
+    };
+    const onVis = () => document.visibilityState === "hidden" && leave();
+    document.addEventListener("visibilitychange", onVis);
+    window.addEventListener("pagehide", leave);
+    return () => {
+      document.removeEventListener("visibilitychange", onVis);
+      window.removeEventListener("pagehide", leave);
+    };
   }, [locked]);
 
   // Xaritani yaratish
