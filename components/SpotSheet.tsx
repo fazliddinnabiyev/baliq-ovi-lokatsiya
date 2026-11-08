@@ -17,10 +17,13 @@ type Props = {
   onSaved: (spot: Spot) => void;
   onCreated?: (spot: Spot) => void;
   onDeleted: (id: number) => void;
+  /** true: yakunlanmagan joy. Yopib bo'lmaydi, faqat saqlash yoki o'chirish mumkin */
+  locked?: boolean;
+  onDiscard?: () => void;
   toast: (msg: string) => void;
 };
 
-export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCreated, onDeleted, toast }: Props) {
+export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCreated, onDeleted, locked = false, onDiscard, toast }: Props) {
   const [name, setName] = useState(spot.name);
   const [region, setRegion] = useState(spot.region ?? "");
   const [fishMost, setFishMost] = useState(spot.fishMost ?? "");
@@ -170,10 +173,13 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
           maxLength={100}
           onChange={(e) => setName(e.target.value)}
         />
-        <button className="iconBtn" onClick={onClose} aria-label="Yopish">
-          ✕
-        </button>
+        {!locked && (
+          <button className="iconBtn" onClick={onClose} aria-label="Yopish">
+            ✕
+          </button>
+        )}
       </div>
+      {locked && <div className="lockBanner">⏳ Bu joy hali saqlanmagan. Baliq turlarini tanlab saqlang yoki joyni o'chiring.</div>}
 
       <div className="coords">
         <span>
@@ -292,6 +298,16 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
         {!isNew && (
           <button className="danger" onClick={remove}>
             🗑 O'chirish
+          </button>
+        )}
+        {isNew && locked && (
+          <button
+            className="danger"
+            onClick={async () => {
+              if (await confirmDialog("Bu lokatsiya saqlanmasdan o'chirilsinmi?")) onDiscard?.();
+            }}
+          >
+            🗑 Joyni o'chirish
           </button>
         )}
       </div>

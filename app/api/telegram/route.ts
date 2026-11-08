@@ -4,6 +4,7 @@ import { FISH, NONE } from "@/lib/fish";
 import { regionShort } from "@/lib/regions";
 import { webhookSecret } from "@/lib/secret";
 import { getSpotByToken } from "@/lib/spots";
+import { PENDING_TEXT, getPending, pendingButton, remindStale, savePending } from "@/lib/pending";
 import { tgCall } from "@/lib/telegram";
 
 export const dynamic = "force-dynamic";
@@ -71,14 +72,17 @@ async function handleMessage(msg: Msg, base: string) {
     }
   }
 
-  // Lokatsiya kelganda hech narsa saqlanmaydi: Mini App shu nuqta bilan ochiladi,
-  // baliq turlari tanlangandan keyingina joy saqlanadi.
+  // Lokatsiya kelganda joy "yakunlanmagan" deb eslab qolinadi: Mini App shu joyni ochadi va
+  // baliq turlari tanlanib saqlanmaguncha (yoki o'chirilmaguncha) boshqa oynaga o'tkazmaydi.
   if (msg.location) {
     const { latitude, longitude } = msg.location;
+    await savePending(String(userId), chatId, latitude, longitude);
     await tgCall("sendMessage", {
       chat_id: chatId,
-      text: "📍 Lokatsiya qabul qilindi.\nPastdagi tugmani bosing: baliq turlarini tanlab, joyni saqlaysiz. Saqlangan joy hammaga ko'rinadi.",
-      reply_markup: openButton(base, "🎣 Joyni to'ldirish", `?new=${latitude.toFixed(6)},${longitude.toFixed(6)}`),
+      text:
+        "📍 Lokatsiya qabul qilindi.\nPastdagi tugmani bosing: baliq turlarini tanlab, joyni saqlaysiz. " +
+        "Saqlangan joy hammaga ko'rinadi. Yakunlamasangiz, eslatib turaman.",
+      reply_markup: openButton(base, "🎣 Joyni to'ldirish"),
     });
     return;
   }
@@ -90,6 +94,7 @@ async function handleMessage(msg: Msg, base: string) {
       text: GUIDE(name),
       reply_markup: openButton(base, "🗺 Xaritani ochish"),
     });
+    await notifyPending(chatId, userId, base);
     return;
   }
 
@@ -98,6 +103,13 @@ async function handleMessage(msg: Msg, base: string) {
     text: text.startsWith("/xarita") || text.startsWith("/map") ? "Xaritangiz:" : "Lokatsiya yuboring (📎 → Location) yoki xaritani oching.",
     reply_markup: openButton(base, "🗺 Xaritani ochish"),
   });
+  await notifyPending(chatId, userId, base);
+}
+
+async function notifyPending(chatId: number, userId: number, base: string) {
+  if (await getPending(String(userId))) {
+    await tgCall("sendMessage", { chat_id: chatId, text: PENDING_TEXT, reply_markup: pendingButton(base) });
+  }
 }
 
 export async function POST(req: Request) {
@@ -109,6 +121,7 @@ export async function POST(req: Request) {
   try {
     const update = (await req.json()) as Update;
     if (update.message) await handleMessage(update.message, appUrl(req));
+    await remindStale(appUrl(req));
   } catch (e) {
     // Telegram qayta-qayta yubormasligi uchun har doim 200 qaytaramiz.
     console.error("Webhook xatosi", e);

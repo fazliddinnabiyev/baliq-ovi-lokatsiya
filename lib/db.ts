@@ -31,6 +31,15 @@ CREATE TABLE IF NOT EXISTS spot_media (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS spot_media_spot_idx ON spot_media (spot_id);
+CREATE TABLE IF NOT EXISTS pending_spots (
+  owner_id TEXT PRIMARY KEY,
+  chat_id BIGINT NOT NULL,
+  lat DOUBLE PRECISION NOT NULL,
+  lng DOUBLE PRECISION NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  reminded_at TIMESTAMPTZ,
+  remind_count INT NOT NULL DEFAULT 0
+);
 CREATE TABLE IF NOT EXISTS spot_comments (
   id SERIAL PRIMARY KEY,
   spot_id INT NOT NULL REFERENCES spots(id) ON DELETE CASCADE,

@@ -86,12 +86,14 @@ export default function App() {
   const [regionFilter, setRegionFilter] = useState("");
   const [newSpot, setNewSpot] = useState<{ lat: number; lng: number } | null>(null);
   const [onlyMine, setOnlyMine] = useState(false);
+  const [locked, setLocked] = useState(false);
   const [message, setMessage] = useState("");
   const [ready, setReady] = useState(false);
 
   const mapEl = useRef<HTMLDivElement>(null);
   const engineRef = useRef<MapEngine | null>(null);
   const addingRef = useRef(false);
+  const lockedRef = useRef(false);
   const fittedRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -154,6 +156,18 @@ export default function App() {
     addingRef.current = adding;
   }, [adding]);
 
+  // Yakunlanmagan joy bor ekan: Telegram oynasini tasodifan yopishdan ogohlantiradi
+  useEffect(() => {
+    lockedRef.current = locked;
+    const w = window.Telegram?.WebApp;
+    try {
+      if (locked) w?.enableClosingConfirmation?.();
+      else w?.disableClosingConfirmation?.();
+    } catch {
+      /* eski Telegram versiyasi */
+    }
+  }, [locked]);
+
   // Xaritani yaratish
   useEffect(() => {
     let cancelled = false;
@@ -161,7 +175,9 @@ export default function App() {
       const el = mapEl.current;
       if (!el) return;
       const handlers = {
-        onPinClick: (id: number) => setSelectedId(id),
+        onPinClick: (id: number) => {
+          if (!lockedRef.current) setSelectedId(id);
+        },
         onMapClick: (lat: number, lng: number) => {
           if (addingRef.current) onMapClick.current(lat, lng);
         },
@@ -232,15 +248,36 @@ export default function App() {
     fittedRef.current = true;
 
     const params = new URLSearchParams(window.location.search);
+    const [qLat, qLng] = (params.get("new") || "").split(",").map(Number);
+    const hasNew = Number.isFinite(qLat) && Number.isFinite(qLng) && Math.abs(qLat) <= 90 && Math.abs(qLng) <= 180;
+    if (hasNew) window.history.replaceState(null, "", window.location.pathname);
 
-    // Botga lokatsiya yuborilganda: yangi joy varag'i shu nuqta bilan ochiladi
-    const [lat, lng] = (params.get("new") || "").split(",").map(Number);
-    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
-      setNewSpot({ lat, lng });
-      window.history.replaceState(null, "", window.location.pathname);
-      return;
-    }
+    // Yakunlanmagan joy bo'lsa: ilova to'g'ridan-to'g'ri shu joyga kiradi va boshqa oynaga o'tkazmaydi
+    (async () => {
+      let pending: { lat: number; lng: number } | null = null;
+      try {
+        pending = (await api<{ pending: { lat: number; lng: number } | null }>("/api/pending")).pending;
+        if (!pending && hasNew) {
+          pending = (
+            await api<{ pending: { lat: number; lng: number } }>("/api/pending", {
+              method: "POST",
+              body: JSON.stringify({ lat: qLat, lng: qLng }),
+            })
+          ).pending;
+        }
+      } catch {
+        if (hasNew) pending = { lat: qLat, lng: qLng };
+      }
+      if (pending) {
+        setLocked(true);
+        setNewSpot(pending);
+        return;
+      }
+      openRequested(params);
+    })();
+  }, [ready, loaded, spots, toast]);
 
+  const openRequested = (params: URLSearchParams) => {
     // Do'st ulashgan joy: ?shared=token
     const token = params.get("shared") || "";
     if (/^[a-f0-9]{16}$/.test(token)) {
@@ -257,7 +294,7 @@ export default function App() {
     const want = Number(params.get("spot"));
     const target = spots.find((s) => s.id === want);
     if (target) setSelectedId(target.id);
-  }, [ready, loaded, spots, toast]);
+  };
 
   // Varaq ochiq turganda orqa sahifa qotadi
   useEffect(() => {
@@ -351,6 +388,7 @@ export default function App() {
           </button>
         </div>
         <button
+          disabled={locked}
           className={`mapBtn addBtn ${adding ? "addOn" : ""}`}
           onClick={() => setAdding((v) => !v)}
           aria-pressed={adding}
@@ -492,8 +530,19 @@ export default function App() {
           spot={blankSpot(newSpot.lat, newSpot.lng)}
           onClose={() => setNewSpot(null)}
           onSaved={onSaved}
+          locked={locked}
+          onDiscard={async () => {
+            try {
+              await api("/api/pending", { method: "DELETE" });
+              setLocked(false);
+              setNewSpot(null);
+            } catch (e) {
+              toast((e as Error).message);
+            }
+          }}
           onCreated={(s) => {
             setSpots((prev) => [s, ...prev]);
+            setLocked(false);
             setNewSpot(null);
             setSelectedId(s.id);
           }}

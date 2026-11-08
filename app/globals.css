@@ -1024,3 +1024,13 @@ option:disabled {
   width: 100%;
   margin-top: 12px;
 }
+
+.lockBanner {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  line-height: 1.4;
+  background: var(--panel2);
+  color: var(--text);
+}
