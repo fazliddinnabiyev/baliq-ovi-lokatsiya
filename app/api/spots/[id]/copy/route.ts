@@ -18,6 +18,7 @@ export async function POST(req: Request, ctx: Ctx) {
     const src = await getSpotPublic(Number(id), me);
     if (!src) return notFound();
     if (src.mine) return NextResponse.json(src);
+    if (src.incomplete) return NextResponse.json({ error: "Bu joy hali to'liq emas" }, { status: 400 });
 
     // Bir joyni ikki marta yuklab olmaslik uchun: shu koordinatada o'zining joyi bo'lsa, o'shani qaytaramiz.
     const dup = await query<{ id: number }>(

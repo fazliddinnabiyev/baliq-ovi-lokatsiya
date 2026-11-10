@@ -19,6 +19,7 @@ const spotSelect = (viewer: string) => `
   s.created_at AS "createdAt",
   s.updated_at AS "updatedAt",
   s.owner_name AS "ownerName",
+  s.incomplete,
   (s.owner_id = ${viewer}) AS mine,
   (SELECT count(*)::int FROM spot_comments c WHERE c.spot_id = s.id) AS "commentCount",
   COALESCE(
@@ -80,4 +81,10 @@ export async function getSpotByToken(token: string, viewerId = ""): Promise<Spot
   );
   const rows = await tidy(r.rows);
   return rows[0] ?? null;
+}
+
+/** Tahrirlash mumkin bo'lgan joy: egasi har doim, to'liq bo'lmagan joyni esa hamma to'ldira oladi. */
+export async function getSpotEditable(id: number, userId: string): Promise<Spot | null> {
+  const s = await getSpotPublic(id, userId);
+  return s && (s.mine || s.incomplete) ? s : null;
 }

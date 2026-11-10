@@ -5,8 +5,8 @@ import { TIMES, validRanking } from "@/lib/fish";
 import { detectRegion } from "@/lib/geocode";
 import { badRequest, fail, unauthorized } from "@/lib/http";
 import { isRegion } from "@/lib/regions";
-import { clearPending, remindStale } from "@/lib/pending";
 import { appUrl } from "@/lib/http";
+import { warnStale } from "@/lib/incomplete";
 import { getSpot, listSpots } from "@/lib/spots";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     if (!user) return unauthorized();
     // Eski joylarga egasining ismini yozib qo'yamiz (komment va ro'yxatda ko'rinishi uchun).
     await query(`UPDATE spots SET owner_name = $1 WHERE owner_id = $2 AND owner_name = ''`, [displayName(user), String(user.id)]);
-    remindStale(appUrl(req)).catch(() => {});
+    warnStale(appUrl(req)).catch(() => {});
     return NextResponse.json(await listSpots(String(user.id)));
   } catch (e) {
     return fail(e);
@@ -64,7 +64,6 @@ export async function POST(req: Request) {
         displayName(user),
       ]
     );
-    await clearPending(String(user.id));
     return NextResponse.json(await getSpot(r.rows[0].id, String(user.id)));
   } catch (e) {
     return fail(e);

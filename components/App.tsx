@@ -58,6 +58,7 @@ function blankSpot(lat: number, lng: number): Spot {
     ownerName: "",
     mine: true,
     commentCount: 0,
+    incomplete: false,
   };
 }
 
@@ -71,7 +72,10 @@ function Level({ n }: { n: number }) {
   );
 }
 
+const INCOMPLETE_COLOR = "#e0a526";
+
 function spotColor(s: Spot): string {
+  if (s.incomplete) return INCOMPLETE_COLOR;
   return (s.fishMost && FISH_COLORS[s.fishMost]) || DEFAULT_PIN_COLOR;
 }
 
@@ -86,14 +90,12 @@ export default function App() {
   const [regionFilter, setRegionFilter] = useState("");
   const [newSpot, setNewSpot] = useState<{ lat: number; lng: number } | null>(null);
   const [onlyMine, setOnlyMine] = useState(false);
-  const [locked, setLocked] = useState(false);
   const [message, setMessage] = useState("");
   const [ready, setReady] = useState(false);
 
   const mapEl = useRef<HTMLDivElement>(null);
   const engineRef = useRef<MapEngine | null>(null);
   const addingRef = useRef(false);
-  const lockedRef = useRef(false);
   const fittedRef = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -156,27 +158,17 @@ export default function App() {
     addingRef.current = adding;
   }, [adding]);
 
-  // Yakunlanmagan joy bor ekan: Telegram oynasini tasodifan yopishdan ogohlantiradi
+  // Egasi to'liq bo'lmagan joyni qoldirib chiqib ketsa (ilova yopildi yoki boshqa ilovaga o'tildi):
+  // bot darrov, bir marta ogohlantiradi
+  const hasMyIncomplete = spots.some((s) => s.mine && s.incomplete);
   useEffect(() => {
-    lockedRef.current = locked;
-    const w = window.Telegram?.WebApp;
-    try {
-      if (locked) w?.enableClosingConfirmation?.();
-      else w?.disableClosingConfirmation?.();
-    } catch {
-      /* eski Telegram versiyasi */
-    }
-  }, [locked]);
-
-  // Yakunlanmagan joy bilan ilovadan chiqib ketilsa (yopildi yoki boshqa ilovaga o'tildi): bot darrov eslatadi
-  useEffect(() => {
-    if (!locked) return;
+    if (!hasMyIncomplete) return;
     let sent = 0;
     const leave = () => {
       if (Date.now() - sent < 5000) return;
       sent = Date.now();
       try {
-        navigator.sendBeacon(`/api/pending/left?init=${encodeURIComponent(initData())}`);
+        navigator.sendBeacon(`/api/incomplete?init=${encodeURIComponent(initData())}`);
       } catch {
         /* ixtiyoriy */
       }
@@ -188,7 +180,7 @@ export default function App() {
       document.removeEventListener("visibilitychange", onVis);
       window.removeEventListener("pagehide", leave);
     };
-  }, [locked]);
+  }, [hasMyIncomplete]);
 
   // Xaritani yaratish
   useEffect(() => {
@@ -197,9 +189,7 @@ export default function App() {
       const el = mapEl.current;
       if (!el) return;
       const handlers = {
-        onPinClick: (id: number) => {
-          if (!lockedRef.current) setSelectedId(id);
-        },
+        onPinClick: (id: number) => setSelectedId(id),
         onMapClick: (lat: number, lng: number) => {
           if (addingRef.current) onMapClick.current(lat, lng);
         },
@@ -248,36 +238,15 @@ export default function App() {
     fittedRef.current = true;
 
     const params = new URLSearchParams(window.location.search);
-    const [qLat, qLng] = (params.get("new") || "").split(",").map(Number);
-    const hasNew = Number.isFinite(qLat) && Number.isFinite(qLng) && Math.abs(qLat) <= 90 && Math.abs(qLng) <= 180;
-    if (hasNew) window.history.replaceState(null, "", window.location.pathname);
 
-    // Yakunlanmagan joy bo'lsa: ilova to'g'ridan-to'g'ri shu joyga kiradi va boshqa oynaga o'tkazmaydi
-    (async () => {
-      let pending: { lat: number; lng: number } | null = null;
-      try {
-        pending = (await api<{ pending: { lat: number; lng: number } | null }>("/api/pending")).pending;
-        if (!pending && hasNew) {
-          pending = (
-            await api<{ pending: { lat: number; lng: number } }>("/api/pending", {
-              method: "POST",
-              body: JSON.stringify({ lat: qLat, lng: qLng }),
-            })
-          ).pending;
-        }
-      } catch {
-        if (hasNew) pending = { lat: qLat, lng: qLng };
-      }
-      if (pending) {
-        setLocked(true);
-        setNewSpot(pending);
-        return;
-      }
-      openRequested(params);
-    })();
-  }, [ready, loaded, spots, toast]);
+    // Eski tugmalardan: ?new=lat,lng, yangi joy varag'i shu nuqta bilan ochiladi
+    const [lat, lng] = (params.get("new") || "").split(",").map(Number);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      setNewSpot({ lat, lng });
+      window.history.replaceState(null, "", window.location.pathname);
+      return;
+    }
 
-  const openRequested = (params: URLSearchParams) => {
     // Do'st ulashgan joy: ?shared=token
     const token = params.get("shared") || "";
     if (/^[a-f0-9]{16}$/.test(token)) {
@@ -293,8 +262,15 @@ export default function App() {
 
     const want = Number(params.get("spot"));
     const target = spots.find((s) => s.id === want);
-    if (target) setSelectedId(target.id);
-  };
+    if (target) {
+      setSelectedId(target.id);
+      return;
+    }
+
+    // Aks holda: o'zining to'liq bo'lmagan joyi bo'lsa, ilova to'g'ridan-to'g'ri shunga kiradi
+    const mineIncomplete = spots.find((s) => s.mine && s.incomplete);
+    if (mineIncomplete) setSelectedId(mineIncomplete.id);
+  }, [ready, loaded, spots, toast]);
 
   // Varaq ochiq turganda orqa sahifa qotadi
   useEffect(() => {
@@ -366,7 +342,7 @@ export default function App() {
     const visible = filtered;
     const sel = selectedId !== null && !visible.some((s) => s.id === selectedId) ? spots.find((s) => s.id === selectedId) : null;
     engineRef.current?.setPins(
-      (sel ? [...visible, sel] : visible).map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, color: spotColor(s) })),
+      (sel ? [...visible, sel] : visible).map((s) => ({ id: s.id, lat: s.lat, lng: s.lng, color: spotColor(s), incomplete: s.incomplete })),
       selectedId
     );
   }, [filtered, spots, ready, selectedId]);
@@ -451,7 +427,6 @@ export default function App() {
           </button>
         </div>
         <button
-          disabled={locked}
           className={`mapBtn addBtn ${adding ? "addOn" : ""}`}
           onClick={() => setAdding((v) => !v)}
           aria-pressed={adding}
@@ -552,7 +527,9 @@ export default function App() {
                       {s.mine ? "Siz qo'shgansiz" : s.ownerName || "Foydalanuvchi"}
                       {s.commentCount > 0 && ` · 💬 ${s.commentCount}`}
                     </span>
-                    {!isComplete(s) ? (
+                    {s.incomplete ? (
+                      <span className="warn">{s.mine ? "Baliq turlarini to'ldiring" : "To'liq emas, siz to'ldirishingiz mumkin"}</span>
+                    ) : !isComplete(s) ? (
                       <span className="warn">Baliq turlarini to'ldiring</span>
                     ) : allFish(s).length > 0 ? (
                       <span className="fishLine">
@@ -593,19 +570,8 @@ export default function App() {
           spot={blankSpot(newSpot.lat, newSpot.lng)}
           onClose={() => setNewSpot(null)}
           onSaved={onSaved}
-          locked={locked}
-          onDiscard={async () => {
-            try {
-              await api("/api/pending", { method: "DELETE" });
-              setLocked(false);
-              setNewSpot(null);
-            } catch (e) {
-              toast((e as Error).message);
-            }
-          }}
           onCreated={(s) => {
             setSpots((prev) => [s, ...prev]);
-            setLocked(false);
             setNewSpot(null);
             setSelectedId(s.id);
           }}
@@ -614,12 +580,15 @@ export default function App() {
         />
       ) : (
         selected &&
-        (selected.mine ? (
+        (selected.mine || selected.incomplete ? (
           <SpotSheet
             key={selected.id}
             spot={selected}
             onClose={() => setSelectedId(null)}
-            onSaved={onSaved}
+            onSaved={(u) => {
+              if (selected.incomplete && !u.incomplete && !u.mine) toast("Rahmat! Joy to'ldirildi. Endi uni faqat egasi o'zgartira oladi.");
+              onSaved(u);
+            }}
             onDeleted={onDeleted}
             toast={toast}
           />

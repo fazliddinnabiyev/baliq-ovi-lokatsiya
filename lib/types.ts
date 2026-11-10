@@ -23,6 +23,8 @@ export type Spot = {
   /** true: joy shu foydalanuvchiniki (faqat egasi o'zgartira oladi) */
   mine: boolean;
   commentCount: number;
+  /** true: lokatsiya bor, lekin baliq turlari kiritilmagan; hamma to'ldira oladi */
+  incomplete: boolean;
 };
 
 export type Comment = {

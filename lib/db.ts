@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS spots (
 ALTER TABLE spots ADD COLUMN IF NOT EXISTS region TEXT;
 ALTER TABLE spots ADD COLUMN IF NOT EXISTS draft BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE spots ADD COLUMN IF NOT EXISTS share_token TEXT;
+ALTER TABLE spots ADD COLUMN IF NOT EXISTS incomplete BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE spots ADD COLUMN IF NOT EXISTS warned BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE spots ADD COLUMN IF NOT EXISTS owner_name TEXT NOT NULL DEFAULT '';
 CREATE UNIQUE INDEX IF NOT EXISTS spots_share_idx ON spots (share_token) WHERE share_token IS NOT NULL;
 CREATE INDEX IF NOT EXISTS spots_owner_idx ON spots (owner_id);
@@ -40,6 +42,8 @@ CREATE TABLE IF NOT EXISTS pending_spots (
   reminded_at TIMESTAMPTZ,
   remind_count INT NOT NULL DEFAULT 0
 );
+INSERT INTO spots (owner_id, lat, lng, incomplete) SELECT owner_id, lat, lng, true FROM pending_spots;
+DELETE FROM pending_spots;
 CREATE TABLE IF NOT EXISTS spot_comments (
   id SERIAL PRIMARY KEY,
   spot_id INT NOT NULL REFERENCES spots(id) ON DELETE CASCADE,

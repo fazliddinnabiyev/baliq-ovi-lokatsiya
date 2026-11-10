@@ -3,7 +3,7 @@ import type * as LeafletTypes from "leaflet";
 /** [janubi-g'arb (lat, lng), shimoli-sharq (lat, lng)] */
 export type Bounds = [[number, number], [number, number]];
 
-export type Pin = { id: number; lat: number; lng: number; color: string };
+export type Pin = { id: number; lat: number; lng: number; color: string; incomplete?: boolean };
 
 export type Handlers = {
   onPinClick: (id: number) => void;
@@ -29,8 +29,8 @@ export type MapEngine = {
 const START_CENTER: [number, number] = [41.3, 69.27];
 const TEMP_COLOR = "#e4473a";
 
-function pinHtml(color: string, selected: boolean): string {
-  return `<div class="pinW ${selected ? "pinSel" : ""}"><i class="pin" style="--c:${color}"></i></div>`;
+function pinHtml(color: string, selected: boolean, incomplete = false): string {
+  return `<div class="pinW ${selected ? "pinSel" : ""} ${incomplete ? "pinInc" : ""}"><i class="pin" style="--c:${color}"></i></div>`;
 }
 
 /* ------------------------------ Leaflet xarita ------------------------------ */
@@ -90,10 +90,10 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
   });
   map.on("click", (e: LeafletTypes.LeafletMouseEvent) => h.onMapClick(e.latlng.lat, e.latlng.lng));
 
-  const icon = (color: string, selected: boolean) =>
-    L.divIcon({ className: "", html: pinHtml(color, selected), iconSize: [26, 30], iconAnchor: [13, 27] });
+  const icon = (color: string, selected: boolean, incomplete = false) =>
+    L.divIcon({ className: "", html: pinHtml(color, selected, incomplete), iconSize: [26, 30], iconAnchor: [13, 27] });
 
-  const pins = new Map<number, { marker: LeafletTypes.Marker; color: string; sel: boolean }>();
+  const pins = new Map<number, { marker: LeafletTypes.Marker; color: string; sel: boolean; inc: boolean }>();
   let temp: LeafletTypes.Marker | null = null;
   let me: { dot: LeafletTypes.Marker; ring: LeafletTypes.Circle } | null = null;
 
@@ -115,13 +115,14 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
         const sel = p.id === selectedId;
         const cur = pins.get(p.id);
         if (!cur) {
-          const marker = L.marker([p.lat, p.lng], { icon: icon(p.color, sel), zIndexOffset: sel ? 1000 : 0 }).addTo(map);
+          const marker = L.marker([p.lat, p.lng], { icon: icon(p.color, sel, !!p.incomplete), zIndexOffset: sel ? 1000 : 0 }).addTo(map);
           marker.on("click", () => h.onPinClick(p.id));
-          pins.set(p.id, { marker, color: p.color, sel });
+          pins.set(p.id, { marker, color: p.color, sel, inc: !!p.incomplete });
         } else {
           cur.marker.setLatLng([p.lat, p.lng]);
-          if (cur.color !== p.color || cur.sel !== sel) {
-            cur.marker.setIcon(icon(p.color, sel));
+          if (cur.color !== p.color || cur.sel !== sel || cur.inc !== !!p.incomplete) {
+            cur.marker.setIcon(icon(p.color, sel, !!p.incomplete));
+            cur.inc = !!p.incomplete;
             cur.marker.setZIndexOffset(sel ? 1000 : 0);
             cur.color = p.color;
             cur.sel = sel;

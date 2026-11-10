@@ -17,13 +17,10 @@ type Props = {
   onSaved: (spot: Spot) => void;
   onCreated?: (spot: Spot) => void;
   onDeleted: (id: number) => void;
-  /** true: yakunlanmagan joy. Yopib bo'lmaydi, faqat saqlash yoki o'chirish mumkin */
-  locked?: boolean;
-  onDiscard?: () => void;
   toast: (msg: string) => void;
 };
 
-export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCreated, onDeleted, locked = false, onDiscard, toast }: Props) {
+export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCreated, onDeleted, toast }: Props) {
   const [name, setName] = useState(spot.name);
   const [region, setRegion] = useState(spot.region ?? "");
   const [fishMost, setFishMost] = useState(spot.fishMost ?? "");
@@ -173,13 +170,17 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
           maxLength={100}
           onChange={(e) => setName(e.target.value)}
         />
-        {!locked && (
-          <button className="iconBtn" onClick={onClose} aria-label="Yopish">
-            ✕
-          </button>
-        )}
+        <button className="iconBtn" onClick={onClose} aria-label="Yopish">
+          ✕
+        </button>
       </div>
-      {locked && <div className="lockBanner">⏳ Bu joy hali saqlanmagan. Baliq turlarini tanlab saqlang yoki joyni o'chiring.</div>}
+      {spot.incomplete && (
+        <div className="lockBanner">
+          {spot.mine
+            ? "⚠️ Bu joy hali to'liq emas: baliq turlarini tanlab saqlang. Aks holda xaritada boshqacha rangda turadi va boshqalar to'ldirishi mumkin."
+            : `⚠️ Bu joyni ${spot.ownerName || "foydalanuvchi"} qo'shgan, lekin to'ldirmagan. Siz to'ldira olasiz. Bir marta to'ldirilgach, uni faqat egasi o'zgartira oladi.`}
+        </div>
+      )}
 
       <div className="coords">
         <span>
@@ -293,26 +294,16 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
 
       <div className="actions">
         <button className="primary" onClick={save} disabled={saving || !fishValid}>
-          {saving ? "Saqlanmoqda..." : isNew ? "Joyni saqlash" : "Saqlash"}
+          {saving ? "Saqlanmoqda..." : isNew ? "Joyni saqlash" : spot.incomplete ? "To'ldirib saqlash" : "Saqlash"}
         </button>
-        {!isNew && (
+        {!isNew && spot.mine && (
           <button className="danger" onClick={remove}>
             🗑 O'chirish
           </button>
         )}
-        {isNew && locked && (
-          <button
-            className="danger"
-            onClick={async () => {
-              if (await confirmDialog("Bu lokatsiya saqlanmasdan o'chirilsinmi?")) onDiscard?.();
-            }}
-          >
-            🗑 Joyni o'chirish
-          </button>
-        )}
       </div>
 
-      {!isNew && <Comments spotId={spot.id} isOwner toast={toast} />}
+      {!isNew && <Comments spotId={spot.id} isOwner={spot.mine} toast={toast} />}
 
       {dir && <Directions lat={spot.lat} lng={spot.lng} title={name.trim() || undefined} onClose={() => setDir(false)} />}
 

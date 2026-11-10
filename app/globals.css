@@ -1053,3 +1053,18 @@ option:disabled {
     box-shadow: 0 0 0 0 rgba(47, 128, 201, 0), 0 1px 5px rgba(0, 0, 0, 0.4);
   }
 }
+
+/* To'liq bo'lmagan joy belgisi: sariq va biroz shaffof */
+.pinInc {
+  opacity: 0.85;
+}
+
+.pinInc .pin {
+  border-style: dashed;
+  border-color: #ffffff;
+}
+
+.pinInc .pin::after {
+  inset: 6px;
+  background: #ffffffcc;
+}

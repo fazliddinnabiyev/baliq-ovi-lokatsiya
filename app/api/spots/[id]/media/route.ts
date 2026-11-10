@@ -3,7 +3,7 @@ import { del } from "@vercel/blob";
 import { requireUser } from "@/lib/auth";
 import { query } from "@/lib/db";
 import { badRequest, fail, notFound, unauthorized } from "@/lib/http";
-import { getSpot } from "@/lib/spots";
+import { getSpotEditable } from "@/lib/spots";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export async function POST(req: Request, ctx: Ctx) {
     const user = requireUser(req);
     if (!user) return unauthorized();
     const { id } = await ctx.params;
-    const spot = await getSpot(Number(id), String(user.id));
+    const spot = await getSpotEditable(Number(id), String(user.id));
     if (!spot) return notFound();
 
     const body = (await req.json()) as { url?: unknown; kind?: unknown };
@@ -45,7 +45,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
     const user = requireUser(req);
     if (!user) return unauthorized();
     const { id } = await ctx.params;
-    const spot = await getSpot(Number(id), String(user.id));
+    const spot = await getSpotEditable(Number(id), String(user.id));
     if (!spot) return notFound();
 
     const mediaId = Number(new URL(req.url).searchParams.get("mediaId"));

@@ -5,7 +5,7 @@ import { query } from "@/lib/db";
 import { TIMES, validRanking } from "@/lib/fish";
 import { badRequest, fail, notFound, unauthorized } from "@/lib/http";
 import { isRegion } from "@/lib/regions";
-import { getSpot, getSpotPublic } from "@/lib/spots";
+import { getSpot, getSpotEditable, getSpotPublic } from "@/lib/spots";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +33,14 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const spotId = Number(id);
     if (!Number.isInteger(spotId)) return notFound();
 
+    // Egasi har doim o'zgartira oladi. To'liq bo'lmagan joyni hamma to'ldira oladi (bir marta), keyin faqat egasi.
+    const current = await getSpotEditable(spotId, String(user.id));
+    if (!current) return NextResponse.json({ error: "Bu joyni faqat egasi o'zgartira oladi" }, { status: 403 });
+
     const body = (await req.json()) as Record<string, unknown>;
+    if (!current.mine && !validRanking(body.fishMost, body.fishMid, body.fishLeast)) {
+      return badRequest("Joyni to'ldirish uchun uchala baliq turini tanlang");
+    }
     const sets: string[] = [];
     const vals: unknown[] = [];
     const add = (col: string, v: unknown) => {
@@ -53,6 +60,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       add("fish_most", body.fishMost);
       add("fish_mid", body.fishMid);
       add("fish_least", body.fishLeast);
+      sets.push("incomplete = false");
     }
 
     if ("region" in body) {
@@ -74,12 +82,12 @@ export async function PATCH(req: Request, ctx: Ctx) {
     vals.push(spotId, String(user.id));
     const r = await query(
       `UPDATE spots SET ${sets.join(", ")}, updated_at = now()
-       WHERE id = $${vals.length - 1} AND owner_id = $${vals.length}`,
+       WHERE id = $${vals.length - 1} AND (owner_id = $${vals.length} OR incomplete = true)`,
       vals
     );
     if (!r.rowCount) return notFound();
 
-    return NextResponse.json(await getSpot(spotId, String(user.id)));
+    return NextResponse.json(await getSpotPublic(spotId, String(user.id)));
   } catch (e) {
     return fail(e);
   }
