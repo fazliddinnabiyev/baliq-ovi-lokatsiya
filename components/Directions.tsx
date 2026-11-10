@@ -15,19 +15,19 @@ export default function Directions({ lat, lng, title, onClose }: Props) {
       await navigator.clipboard.writeText(t);
       setCopied(true);
     } catch {
-      window.prompt("Koordinata:", t);
+      window.prompt("Координата:", t);
     }
   }
 
   return (
     <div className="dirOverlay" onClick={onClose}>
-      <div className="dirPanel" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Qanday boriladi">
+      <div className="dirPanel" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Қандай борилади">
         <div className="grab" aria-hidden="true" />
-        <h3 className="dirTitle">Qanday boriladi{title ? `: ${title}` : ""}</h3>
+        <h3 className="dirTitle">Қандай борилади{title ? `: ${title}` : ""}</h3>
 
-        <p className="dirSub">Qaysi ilovada ochilsin?</p>
+        <p className="dirSub">Қайси иловада очилсин?</p>
         <div className="dirList">
-          {[{ id: "google", name: "Google Xarita", url: googleRoute(lat, lng) }, ...navApps(lat, lng)].map((a) => (
+          {[{ id: "google", name: "Гугл Харита", url: googleRoute(lat, lng) }, ...navApps(lat, lng)].map((a) => (
             <button key={a.id} className="dirItem" onClick={() => openExternal(a.url)}>
               <span className={`dirIcon di-${a.id}`} aria-hidden="true">
                 {a.name.slice(0, 1)}
@@ -41,12 +41,13 @@ export default function Directions({ lat, lng, title, onClose }: Props) {
         </div>
 
         <button className="ghost dirCopy" onClick={copyCoords}>
-          {copied ? "✓ Nusxalandi" : "📋 Koordinatani nusxalash"}
+          {copied ? "✓ Нусхаланди" : "📋 Координатани нусхалаш"}
         </button>
 
-        <p className="hint">Yo'l hozirgi joylashuvingizdan boshlanadi. Ilova telefoningizda o'rnatilgan bo'lsa ochiladi.</p>
+        <p className="hint">Йўл ҳозирги жойлашувингиздан бошланади. Илова телефонингизда ўрнатилган бўлса очилади.</p>
         <button className="danger dirClose" onClick={onClose}>
-          Yopish
+          
+          Ёпиш
         </button>
       </div>
     </div>

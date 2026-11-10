@@ -21,9 +21,9 @@ export async function POST(request: Request) {
       request,
       onBeforeGenerateToken: async () => {
         const user = verifyInitData(initData);
-        if (!user) throw new Error("Ruxsat yo'q");
+        if (!user) throw new Error("Рухсат йўқ");
         const spot = await getSpotEditable(spotId, String(user.id));
-        if (!spot) throw new Error("Joy topilmadi");
+        if (!spot) throw new Error("Жой топилмади");
         return {
           allowedContentTypes: ["image/*", "video/*"],
           maximumSizeInBytes: 200 * 1024 * 1024,
@@ -36,6 +36,6 @@ export async function POST(request: Request) {
     });
     return NextResponse.json(json);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "Xatolik" }, { status: 400 });
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Хатолик" }, { status: 400 });
   }
 }

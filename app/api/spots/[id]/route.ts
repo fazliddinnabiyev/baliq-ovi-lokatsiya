@@ -35,11 +35,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
 
     // Egasi har doim o'zgartira oladi. To'liq bo'lmagan joyni hamma to'ldira oladi (bir marta), keyin faqat egasi.
     const current = await getSpotEditable(spotId, String(user.id));
-    if (!current) return NextResponse.json({ error: "Bu joyni faqat egasi o'zgartira oladi" }, { status: 403 });
+    if (!current) return NextResponse.json({ error: "Бу жойни фақат эгаси ўзгартира олади" }, { status: 403 });
 
     const body = (await req.json()) as Record<string, unknown>;
     if (!current.mine && !validRanking(body.fishMost, body.fishMid, body.fishLeast)) {
-      return badRequest("Joyni to'ldirish uchun uchala baliq turini tanlang");
+      return badRequest("Жойни тўлдириш учун учала балиқ турини танланг");
     }
     const sets: string[] = [];
     const vals: unknown[] = [];
@@ -55,7 +55,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     // Baliq turlari majburiy: yuborilsa uchalasi ham to'g'ri va bir-biridan farqli bo'lishi shart.
     if ("fishMost" in body || "fishMid" in body || "fishLeast" in body) {
       if (!validRanking(body.fishMost, body.fishMid, body.fishLeast)) {
-        return badRequest("Eng ko'p, o'rtacha va eng kam baliq turini tanlang (uchalasi har xil bo'lishi kerak)");
+        return badRequest("Энг кўп, ўртача ва энг кам балиқ турини танланг (учаласи ҳар хил бўлиши керак)");
       }
       add("fish_most", body.fishMost);
       add("fish_mid", body.fishMid);
@@ -64,7 +64,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
     }
 
     if ("region" in body) {
-      if (!isRegion(body.region)) return badRequest("Viloyat noto'g'ri");
+      if (!isRegion(body.region)) return badRequest("Вилоят нотўғри");
       add("region", body.region);
     }
 
@@ -77,7 +77,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
       add("times", arr);
     }
 
-    if (sets.length === 0) return badRequest("O'zgartirish uchun maydon yo'q");
+    if (sets.length === 0) return badRequest("Ўзгартириш учун майдон йўқ");
 
     vals.push(spotId, String(user.id));
     const r = await query(
@@ -106,7 +106,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
       try {
         await del(urls);
       } catch (e) {
-        console.error("Blob o'chirishda xato", e);
+        console.error("Blob ўчиришда хато", e);
       }
     }
     await query(`DELETE FROM spots WHERE id = $1 AND owner_id = $2`, [spot.id, String(user.id)]);

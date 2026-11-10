@@ -30,13 +30,13 @@ export async function GET(req: Request) {
     drop_pending_updates: false,
   });
   const menu = await tgCall("setChatMenuButton", {
-    menu_button: { type: "web_app", text: "🗺 Xarita", web_app: { url: base } },
+    menu_button: { type: "web_app", text: "🗺 Харита", web_app: { url: base } },
   });
   const commands = await tgCall("setMyCommands", {
     commands: [
-      { command: "start", description: "Boshlash" },
-      { command: "xarita", description: "Xaritani ochish" },
-      { command: "yordam", description: "Qanday foydalanish" },
+      { command: "start", description: "Бошлаш" },
+      { command: "xarita", description: "Харитани очиш" },
+      { command: "yordam", description: "Қандай фойдаланиш" },
     ],
   });
 

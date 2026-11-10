@@ -53,7 +53,7 @@ export default function Comments({ spotId, isOwner, toast, onCount }: Props) {
   }
 
   async function remove(c: Comment) {
-    if (!(await confirmDialog("Komment o'chirilsinmi?"))) return;
+    if (!(await confirmDialog("Коммент ўчирилсинми?"))) return;
     try {
       await api(`/api/spots/${spotId}/comments?commentId=${c.id}`, { method: "DELETE" });
       set((items ?? []).filter((x) => x.id !== c.id));
@@ -64,9 +64,9 @@ export default function Comments({ spotId, isOwner, toast, onCount }: Props) {
 
   return (
     <div className="section">
-      <h3>💬 Kommentlar {items && items.length > 0 ? `(${items.length})` : ""}</h3>
-      {items === null && <p className="hint">Yuklanmoqda...</p>}
-      {items && items.length === 0 && <p className="hint">Hali komment yo'q. Birinchi bo'lib yozing.</p>}
+      <h3>💬 Комментлар {items && items.length > 0 ? `(${items.length})` : ""}</h3>
+      {items === null && <p className="hint">Юкланмоқда...</p>}
+      {items && items.length === 0 && <p className="hint">Ҳали коммент йўқ. Биринчи бўлиб ёзинг.</p>}
       <div className="comments">
         {(items ?? []).map((c) => (
           <div key={c.id} className="comment">
@@ -76,13 +76,13 @@ export default function Comments({ spotId, isOwner, toast, onCount }: Props) {
             <div className="cBody">
               <div>
                 <b>{c.userName}</b>
-                {c.byOwner && <span className="ownerTag">muallif</span>}
+                {c.byOwner && <span className="ownerTag">муаллиф</span>}
                 <span className="cTime">{when(c.createdAt)}</span>
               </div>
               <p>{c.text}</p>
             </div>
             {(c.mine || isOwner) && (
-              <button className="cDel" onClick={() => remove(c)} aria-label="Kommentni o'chirish">
+              <button className="cDel" onClick={() => remove(c)} aria-label="Комментни ўчириш">
                 ✕
               </button>
             )}
@@ -93,12 +93,13 @@ export default function Comments({ spotId, isOwner, toast, onCount }: Props) {
         <input
           value={text}
           maxLength={500}
-          placeholder="Komment yozing..."
+          placeholder="Коммент ёзинг..."
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
         />
         <button className="primary" onClick={send} disabled={sending || !text.trim()}>
-          Yuborish
+          
+          Юбориш
         </button>
       </div>
     </div>

@@ -65,10 +65,10 @@ export async function createLeafletEngine(el: HTMLElement, h: Handlers): Promise
     ),
   ]);
   const bases: Record<string, LeafletTypes.Layer> = {
-    Xarita: street,
-    Batafsil: osm,
-    Relyef: topo,
-    "Yo'ldosh": sat,
+    "Харита": street,
+    "Батафсил": osm,
+    "Рельеф": topo,
+    "Йўлдош": sat,
   };
 
   let saved = "";

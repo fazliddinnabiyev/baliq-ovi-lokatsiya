@@ -4,7 +4,7 @@ export type TgUser = { id: number; first_name?: string; last_name?: string; user
 
 /** Ommaviy ko'rinadigan ism: Ism (yoki username). */
 export function displayName(u: TgUser): string {
-  return (u.first_name || u.username || "Foydalanuvchi").slice(0, 60);
+  return (u.first_name || u.username || "Фойдаланувчи").slice(0, 60);
 }
 
 /** Telegram Mini App initData imzosini tekshiradi. */

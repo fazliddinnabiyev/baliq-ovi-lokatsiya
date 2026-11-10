@@ -35,10 +35,10 @@ export async function POST(req: Request) {
     const lat = Number(body.lat);
     const lng = Number(body.lng);
     if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
-      return badRequest("Koordinata noto'g'ri");
+      return badRequest("Координата нотўғри");
     }
     if (!validRanking(body.fishMost, body.fishMid, body.fishLeast)) {
-      return badRequest("Eng ko'p, o'rtacha va eng kam baliq turini tanlang (uchalasi har xil bo'lishi kerak)");
+      return badRequest("Энг кўп, ўртача ва энг кам балиқ турини танланг (учаласи ҳар хил бўлиши керак)");
     }
 
     const times = Array.isArray(body.times)

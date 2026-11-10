@@ -31,10 +31,10 @@ export async function warnOwner(ownerId: string, base: string, minAgeMinutes = 0
   await tgCall("sendMessage", {
     chat_id: Number(ownerId),
     text:
-      `⚠️ ${many ? `${r.rows.length} ta lokatsiyangiz` : "Lokatsiyangiz"} to'liq emas: baliq turlari kiritilmagan.\n` +
-      `${many ? "Ular" : "U"} xaritada boshqacha rangda ko'rinadi va boshqalar ham to'ldirishi mumkin. ` +
-      "Siz to'ldirsangiz yaxshi bo'ladi.",
-    reply_markup: { inline_keyboard: [[{ text: "🎣 To'ldirish", web_app: { url: `${base}/?spot=${id}` } }]] },
+      `⚠️ ${many ? `${r.rows.length} та локациянгиз` : "Локациянгиз"} тўлиқ эмас: балиқ турлари киритилмаган.\n` +
+      `${many ? "Улар" : "U"} харитада бошқача рангда кўринади ва бошқалар ҳам тўлдириши мумкин. ` +
+      "Сиз тўлдирсангиз яхши бўлади.",
+    reply_markup: { inline_keyboard: [[{ text: "🎣 Тўлдириш", web_app: { url: `${base}/?spot=${id}` } }]] },
   });
   return r.rows.length;
 }
@@ -54,7 +54,7 @@ export async function warnStale(base: string): Promise<void> {
     try {
       await warnOwner(row.owner_id, base, 30);
     } catch (e) {
-      console.error("Ogohlantirish yuborilmadi", e);
+      console.error("Огоҳлантириш юборилмади", e);
     }
   }
 }

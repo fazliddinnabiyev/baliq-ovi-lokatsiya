@@ -2,6 +2,7 @@
 
 import { upload } from "@vercel/blob/client";
 import { useRef, useState } from "react";
+import { cyr } from "@/lib/cyr";
 import { api, compressImage, confirmDialog, initData, openTelegramLink } from "@/lib/client";
 import { FISH, NONE, TIMES, validRanking } from "@/lib/fish";
 import { OTHER_REGION, REGIONS } from "@/lib/regions";
@@ -43,7 +44,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
 
   async function save() {
     if (!fishValid) {
-      toast("Avval uchala baliq turini tanlang");
+      toast("Аввал учала балиқ турини танланг");
       return;
     }
     setSaving(true);
@@ -63,7 +64,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
           method: "POST",
           body: JSON.stringify({ ...payload, lat: spot.lat, lng: spot.lng }),
         });
-        toast("Joy saqlandi ✓");
+        toast("Жой сақланди ✓");
         onCreated?.(created);
       } else {
         const updated = await api<Spot>(`/api/spots/${spot.id}`, {
@@ -71,7 +72,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
           body: JSON.stringify(payload),
         });
         onSaved(updated);
-        toast("Saqlandi ✓");
+        toast("Сақланди ✓");
       }
     } catch (e) {
       toast((e as Error).message);
@@ -83,7 +84,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
   async function share() {
     try {
       const { url } = await api<{ url: string }>(`/api/spots/${spot.id}/share`, { method: "POST" });
-      const text = `🎣 ${name.trim() || "Baliq ovi joyi"}: botga Start bosing, joy ochiladi`;
+      const text = `🎣 ${name.trim() || "Балиқ ови жойи"}: ботга Start босинг, жой очилади`;
       openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`);
     } catch (e) {
       toast((e as Error).message);
@@ -91,7 +92,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
   }
 
   async function remove() {
-    if (!(await confirmDialog("Bu joy va uning rasm/videolari o'chirilsinmi?"))) return;
+    if (!(await confirmDialog("Бу жой ва унинг расм/видеолари ўчирилсинми?"))) return;
     try {
       await api(`/api/spots/${spot.id}`, { method: "DELETE" });
       onDeleted(spot.id);
@@ -123,7 +124,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
         onSaved(current);
       }
     } catch (e) {
-      toast((e as Error).message || "Yuklashda xatolik");
+      toast((e as Error).message || "Юклашда хатолик");
     } finally {
       setProgress("");
       if (fileRef.current) fileRef.current.value = "";
@@ -131,7 +132,7 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
   }
 
   async function removeMedia(m: Media) {
-    if (!(await confirmDialog("Bu fayl o'chirilsinmi?"))) return;
+    if (!(await confirmDialog("Бу файл ўчирилсинми?"))) return;
     try {
       await api(`/api/spots/${spot.id}/media?mediaId=${m.id}`, { method: "DELETE" });
       onSaved({ ...spot, media: spot.media.filter((x) => x.id !== m.id) });
@@ -148,11 +149,11 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
         {icon} {label}
       </span>
       <select value={value} onChange={(e) => set(e.target.value)} className={value ? "" : "needs"}>
-        <option value="">Tanlang</option>
-        <option value={NONE}>{NONE}</option>
+        <option value="">Танланг</option>
+        <option value={NONE}>{cyr(NONE)}</option>
         {FISH.map((f) => (
           <option key={f} value={f} disabled={f !== value && chosen.includes(f)}>
-            {f}
+            {cyr(f)}
           </option>
         ))}
       </select>
@@ -166,19 +167,19 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
         <input
           className="nameInput"
           value={name}
-          placeholder={isNew ? "Yangi joy" : `Joy #${spot.id}`}
+          placeholder={isNew ? "Янги жой" : `Жой #${spot.id}`}
           maxLength={100}
           onChange={(e) => setName(e.target.value)}
         />
-        <button className="iconBtn" onClick={onClose} aria-label="Yopish">
+        <button className="iconBtn" onClick={onClose} aria-label="Ёпиш">
           ✕
         </button>
       </div>
       {spot.incomplete && (
         <div className="lockBanner">
           {spot.mine
-            ? "⚠️ Bu joy hali to'liq emas: baliq turlarini tanlab saqlang. Aks holda xaritada boshqacha rangda turadi va boshqalar to'ldirishi mumkin."
-            : `⚠️ Bu joyni ${spot.ownerName || "foydalanuvchi"} qo'shgan, lekin to'ldirmagan. Siz to'ldira olasiz. Bir marta to'ldirilgach, uni faqat egasi o'zgartira oladi.`}
+            ? "⚠️ Бу жой ҳали тўлиқ эмас: балиқ турларини танлаб сақланг. Акс ҳолда харитада бошқача рангда туради ва бошқалар тўлдириши мумкин."
+            : `⚠️ Бу жойни ${spot.ownerName || "foydalanuvchi"} қўшган, лекин тўлдирмаган. Сиз тўлдира оласиз. Бир марта тўлдирилгач, уни фақат эгаси ўзгартира олади.`}
         </div>
       )}
 
@@ -191,19 +192,21 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
       {!isNew && (
         <div className="quick">
           <button className="ghost" onClick={() => setDir(true)}>
-            🧭 Qanday boriladi
+            
+            🧭 Қандай борилади
           </button>
           <button className="ghost" onClick={share}>
-            📤 Ulashish
+            
+            📤 Улашиш
           </button>
         </div>
       )}
 
       <div className="section">
-        <h3>📷 Rasm va videolar</h3>
-        <p className="publicWarn">⚠️ Yuklangan rasm va videolarni hamma ko'radi. Shaxsiy rasm yuklamang.</p>
+        <h3>📷 Расм ва видеолар</h3>
+        <p className="publicWarn">⚠️ Юкланган расм ва видеоларни ҳамма кўради. Шахсий расм юкламанг.</p>
         {isNew ? (
-          <p className="hint">Rasm va video joy saqlangandan keyin qo'shiladi.</p>
+          <p className="hint">Расм ва видео жой сақлангандан кейин қўшилади.</p>
         ) : (
           <>
             <div className="mediaGrid">
@@ -237,69 +240,70 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
       </div>
 
       <div className="section">
-        <h3>🐟 Qaysi baliq ko'proq? (majburiy)</h3>
-        <p className="hint hintTop">Baliq deyarli bo'lmasa, "Yo'q" ni tanlang.</p>
-        {fishSelect("🥇", "Eng ko'p", fishMost, setFishMost)}
-        {fishSelect("🥈", "O'rtacha", fishMid, setFishMid)}
-        {fishSelect("🥉", "Eng kam", fishLeast, setFishLeast)}
-        {!fishValid && <p className="req">Uchala qatorni ham tanlang. Baliq turlari takrorlanmasligi kerak ("Yo'q" takrorlanishi mumkin).</p>}
+        <h3>🐟 Қайси балиқ кўпроқ? (мажбурий)</h3>
+        <p className="hint hintTop">Балиқ деярли бўлмаса, "Йўқ" ни танланг.</p>
+        {fishSelect("🥇", "Энг кўп", fishMost, setFishMost)}
+        {fishSelect("🥈", "Ўртача", fishMid, setFishMid)}
+        {fishSelect("🥉", "Энг кам", fishLeast, setFishLeast)}
+        {!fishValid && <p className="req">Учала қаторни ҳам танланг. Балиқ турлари такрорланмаслиги керак ("Йўқ" такрорланиши мумкин).</p>}
       </div>
 
       <div className="section">
-        <h3>🪱 Qanday yem olish kerak?</h3>
+        <h3>🪱 Қандай ем олиш керак?</h3>
         <textarea
           rows={2}
           value={bait}
           maxLength={500}
-          placeholder="Masalan: makkajo'xori, qurt, boyli..."
+          placeholder="Масалан: маккажўхори, қурт, бойли..."
           onChange={(e) => setBait(e.target.value)}
         />
       </div>
 
       <div className="section">
-        <h3>🕒 Kunning qaysi qismida yaxshi?</h3>
+        <h3>🕒 Куннинг қайси қисмида яхши?</h3>
         <div className="chips">
           {TIMES.map((t) => (
             <button key={t} className={`chip ${times.includes(t) ? "chipOn" : ""}`} onClick={() => toggleTime(t)}>
-              {t}
+              {cyr(t)}
             </button>
           ))}
         </div>
       </div>
 
       <div className="section">
-        <h3>📝 Izoh</h3>
+        <h3>📝 Изоҳ</h3>
         <textarea
           rows={4}
           value={note}
           maxLength={3000}
-          placeholder="Keyingi mavsum uchun eslatma: qanday yetib borish, chuqurlik, qirg'oq, ..."
+          placeholder="Кейинги мавсум учун эслатма: қандай етиб бориш, чуқурлик, қирғоқ, ..."
           onChange={(e) => setNote(e.target.value)}
         />
       </div>
 
       <div className="section">
         <label className="row">
-          <span className="rowLabel">🧭 Viloyat</span>
+          <span className="rowLabel">🧭 Вилоят</span>
           <select value={region} onChange={(e) => setRegion(e.target.value)}>
-            <option value="">{isNew ? "Avto-aniqlash" : "Aniqlanmagan"}</option>
+            <option value="">{isNew ? "Avto-aniqlash" : "Аниқланмаган"}</option>
             {REGIONS.map((r) => (
               <option key={r} value={r}>
-                {r}
+                {cyr(r)}
               </option>
             ))}
-            <option value={OTHER_REGION}>{OTHER_REGION}</option>
+            <option value={OTHER_REGION}>{cyr(OTHER_REGION)}</option>
           </select>
         </label>
       </div>
 
       <div className="actions">
         <button className="primary" onClick={save} disabled={saving || !fishValid}>
-          {saving ? "Saqlanmoqda..." : isNew ? "Joyni saqlash" : spot.incomplete ? "To'ldirib saqlash" : "Saqlash"}
+          {saving ? "Saqlanmoqda..." : isNew ? "Жойни сақлаш" : spot.incomplete ? "Тўлдириб сақлаш" : "Сақлаш"}
         </button>
         {!isNew && spot.mine && (
           <button className="danger" onClick={remove}>
-            🗑 O'chirish
+            
+            🗑 Ўчириш
           </button>
         )}
       </div>
@@ -319,10 +323,12 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
             )}
             <div className="viewerBar">
               <button className="danger" onClick={() => removeMedia(viewer)}>
-                🗑 O'chirish
+                
+                🗑 Ўчириш
               </button>
               <button className="primary" onClick={() => setViewer(null)}>
-                Yopish
+                
+                Ёпиш
               </button>
             </div>
           </div>

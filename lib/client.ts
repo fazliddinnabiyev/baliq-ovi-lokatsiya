@@ -12,7 +12,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     },
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((data as { error?: string }).error || `Xatolik ${res.status}`);
+  if (!res.ok) throw new Error((data as { error?: string }).error || `Хатолик ${res.status}`);
   return data as T;
 }
 

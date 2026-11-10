@@ -45,14 +45,14 @@ export async function POST(req: Request, ctx: Ctx) {
 
     const body = (await req.json()) as { text?: unknown };
     const text = typeof body.text === "string" ? body.text.trim().slice(0, 500) : "";
-    if (!text) return badRequest("Komment bo'sh");
+    if (!text) return badRequest("Коммент бўш");
 
     // Spamdan himoya: bir foydalanuvchi 10 soniyada bittadan ko'p komment yoza olmaydi.
     const recent = await query(
       `SELECT 1 FROM spot_comments WHERE user_id = $1 AND created_at > now() - interval '10 seconds' LIMIT 1`,
       [String(user.id)]
     );
-    if (recent.rowCount) return badRequest("Biroz kuting, juda tez yozyapsiz");
+    if (recent.rowCount) return badRequest("Бироз кутинг, жуда тез ёзяпсиз");
 
     await query(`INSERT INTO spot_comments (spot_id, user_id, user_name, text) VALUES ($1, $2, $3, $4)`, [
       spot.id,

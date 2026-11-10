@@ -3,6 +3,7 @@
 import "leaflet/dist/leaflet.css";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, initData } from "@/lib/client";
+import { cyr } from "@/lib/cyr";
 import { DEFAULT_PIN_COLOR, FISH, FISH_COLORS, isFish } from "@/lib/fish";
 import { createLeafletEngine, type Bounds, type MapEngine } from "@/lib/mapEngine";
 import { OTHER_REGION, REGIONS, regionShort } from "@/lib/regions";
@@ -25,7 +26,7 @@ function shortDate(iso: string): string {
 }
 
 function spotTitle(s: Spot): string {
-  return s.name || `Joy #${s.id}`;
+  return s.name || `Жой #${s.id}`;
 }
 
 /** Haqiqiy baliq turlari ("Yo'q" hisobga olinmaydi). */
@@ -136,7 +137,7 @@ export default function App() {
   // Joylarni yuklash
   useEffect(() => {
     if (!window.Telegram?.WebApp?.initData) {
-      setError("Bu ilovani Telegram ichidagi bot orqali oching.");
+      setError("Бу иловани Телеграм ичидаги bot орқали очинг.");
       setLoaded(true);
       return;
     }
@@ -256,7 +257,7 @@ export default function App() {
           setSpots((prev) => (prev.some((x) => x.id === spot.id) ? prev : [spot, ...prev]));
           setSelectedId(spot.id);
         })
-        .catch(() => toast("Ulashilgan joy topilmadi"));
+        .catch(() => toast("Улашилган жой топилмади"));
       return;
     }
 
@@ -329,7 +330,7 @@ export default function App() {
       if (regionFilter && (s.region || OTHER_REGION) !== regionFilter) return false;
       if (!hasFish(s, fishFilter)) return false;
       if (!q) return true;
-      return [s.name, s.note, s.bait, s.region, s.ownerName, ...allFish(s), `joy #${s.id}`]
+      return [s.name, s.note, s.bait, s.region, cyr(s.region), s.ownerName, ...allFish(s), ...allFish(s).map(cyr), `жой #${s.id}`]
         .filter(Boolean)
         .join(" ")
         .toLowerCase()
@@ -366,7 +367,7 @@ export default function App() {
   const [locating, setLocating] = useState(false);
   const locateMe = useCallback(() => {
     if (!navigator.geolocation) {
-      toast("Bu qurilmada joylashuv aniqlanmaydi");
+      toast("Бу қурилмада жойлашув аниқланмайди");
       return;
     }
     setLocating(true);
@@ -384,7 +385,7 @@ export default function App() {
       },
       () => {
         setLocating(false);
-        toast("Joylashuv ruxsati berilmadi. Telefon sozlamalarida Telegram uchun joylashuvni yoqing.");
+        toast("Жойлашув рухсати берилмади. Телефон созламаларида Телеграм учун жойлашувни ёқинг.");
       },
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
     );
@@ -409,21 +410,23 @@ export default function App() {
   return (
     <div className="page">
       <header className="head">
-        <h1>Baliq joylari</h1>
-        <span className="count">{spots.length} ta joy</span>
+        <h1>Балиқ жойлари</h1>
+        <span className="count">{spots.length}  та жой</span>
       </header>
 
       <section className="mapCard">
         <div ref={mapEl} className="map" />
         <div className="mapTools">
           <button className="mapBtn" onClick={fitUz}>
-            O'zbekiston
+            
+            Ўзбекистон
           </button>
           <button className="mapBtn" onClick={fitAll} disabled={filtered.length === 0}>
-            Joylar
+            
+            Жойлар
           </button>
           <button className="mapBtn" onClick={locateMe} disabled={locating}>
-            {locating ? "Aniqlanmoqda..." : "📍 Men"}
+            {locating ? "Aniqlanmoqda..." : "📍 Мен"}
           </button>
         </div>
         <button
@@ -431,9 +434,9 @@ export default function App() {
           onClick={() => setAdding((v) => !v)}
           aria-pressed={adding}
         >
-          {adding ? "Bekor qilish" : "＋ Xaritadan belgilash"}
+          {adding ? "Бекор қилиш" : "＋ Харитадан белгилаш"}
         </button>
-        {adding && <div className="mapHint">Joy qo'shish uchun xaritaning kerakli nuqtasini bosing</div>}
+        {adding && <div className="mapHint">Жой қўшиш учун хаританинг керакли нуқтасини босинг</div>}
       </section>
 
       {error && <div className="notice error">{error}</div>}
@@ -442,26 +445,29 @@ export default function App() {
         <input
           className="search"
           type="search"
-          placeholder="Nom, baliq, yem yoki izoh bo'yicha qidiring"
+          placeholder="Ном, балиқ, ем ёки изоҳ бўйича қидиринг"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
 
         {spots.length > 0 && (
           <>
-            <div className="filters" role="group" aria-label="Kimning joylari">
+            <div className="filters" role="group" aria-label="Кимнинг жойлари">
               <button className={`fchip ${!onlyMine ? "fchipOn" : ""}`} onClick={() => setOnlyMine(false)}>
-                Hamma joylar
+                
+                Ҳамма жойлар
               </button>
               <button className={`fchip ${onlyMine ? "fchipOn" : ""}`} onClick={() => setOnlyMine(true)}>
-                Mening joylarim <b>{spots.filter((s) => s.mine).length}</b>
+                
+                Менинг жойларим <b>{spots.filter((s) => s.mine).length}</b>
               </button>
             </div>
 
-            <div className="filterLabel">Viloyat</div>
-            <div className="filters" role="group" aria-label="Viloyat bo'yicha filtr">
+            <div className="filterLabel">Вилоят</div>
+            <div className="filters" role="group" aria-label="Вилоят бўйича филтр">
               <button className={`fchip ${regionFilter === "" ? "fchipOn" : ""}`} onClick={() => setRegionFilter("")}>
-                Hammasi
+                
+                Ҳаммаси
               </button>
               {regionChips.map(([name, n]) => (
                 <button
@@ -469,15 +475,16 @@ export default function App() {
                   className={`fchip ${regionFilter === name ? "fchipOn" : ""}`}
                   onClick={() => setRegionFilter(regionFilter === name ? "" : name)}
                 >
-                  {regionShort(name) || name} <b>{n}</b>
+                  {cyr(regionShort(name) || name)} <b>{n}</b>
                 </button>
               ))}
             </div>
 
-            <div className="filterLabel">Baliq turi</div>
-            <div className="filters" role="group" aria-label="Baliq turi bo'yicha filtr">
+            <div className="filterLabel">Балиқ тури</div>
+            <div className="filters" role="group" aria-label="Балиқ тури бўйича филтр">
               <button className={`fchip ${fishFilter === "" ? "fchipOn" : ""}`} onClick={() => setFishFilter("")}>
-                Hammasi
+                
+                Ҳаммаси
               </button>
               {FISH.map((name) => (
                 <button
@@ -486,7 +493,7 @@ export default function App() {
                   onClick={() => setFishFilter(fishFilter === name ? "" : name)}
                 >
                   <i className="dot" style={{ background: FISH_COLORS[name] }} />
-                  {name} <b>{fishCounts.get(name) ?? 0}</b>
+                  {cyr(name)} <b>{fishCounts.get(name) ?? 0}</b>
                 </button>
               ))}
             </div>
@@ -495,12 +502,12 @@ export default function App() {
 
         {loaded && !error && spots.length === 0 && (
           <div className="notice">
-            <strong>Hali joy yo'q.</strong>
-            <span>Birinchi bo'lib joy qo'shing: botga lokatsiya yuboring yoki "Xaritadan belgilash" ni bosing.</span>
+            <strong>Ҳали жой йўқ.</strong>
+            <span>Биринчи бўлиб жой қўшинг: ботга локация юборинг ёки "Харитадан белгилаш" ни босинг.</span>
           </div>
         )}
 
-        {spots.length > 0 && filtered.length === 0 && <div className="notice">Hech narsa topilmadi.</div>}
+        {spots.length > 0 && filtered.length === 0 && <div className="notice">Ҳеч нарса топилмади.</div>}
 
         {filtered.length > 0 && (
           <div className="spotList">
@@ -524,13 +531,13 @@ export default function App() {
                   <span className="rowBody">
                     <span className="rowTitle">{spotTitle(s)}</span>
                     <span className="rowMeta">
-                      {s.mine ? "Siz qo'shgansiz" : s.ownerName || "Foydalanuvchi"}
+                      {s.mine ? "Сиз қўшгансиз" : s.ownerName || "Фойдаланувчи"}
                       {s.commentCount > 0 && ` · 💬 ${s.commentCount}`}
                     </span>
                     {s.incomplete ? (
-                      <span className="warn">{s.mine ? "Baliq turlarini to'ldiring" : "To'liq emas, siz to'ldirishingiz mumkin"}</span>
+                      <span className="warn">{s.mine ? "Балиқ турларини тўлдиринг" : "Тўлиқ эмас, сиз тўлдиришингиз мумкин"}</span>
                     ) : !isComplete(s) ? (
-                      <span className="warn">Baliq turlarini to'ldiring</span>
+                      <span className="warn">Балиқ турларини тўлдиринг</span>
                     ) : allFish(s).length > 0 ? (
                       <span className="fishLine">
                         {fish.map(
@@ -538,18 +545,18 @@ export default function App() {
                             name &&
                             isFish(name) && (
                               <span key={name} className="fish">
-                                {name}
+                                {cyr(name)}
                                 <Level n={n} />
                               </span>
                             )
                         )}
                       </span>
                     ) : (
-                      <span className="rowMeta">Bu joyda baliq yo'q</span>
+                      <span className="rowMeta">Бу жойда балиқ йўқ</span>
                     )}
                     <span className="rowMeta">
-                      {s.region && <span className="regionTag">{regionShort(s.region)}</span>}
-                      {s.times.join(", ")}
+                      {s.region && <span className="regionTag">{cyr(regionShort(s.region))}</span>}
+                      {cyr(s.times.join(", "))}
                     </span>
                   </span>
                   <span className="rowSide">

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { appUrl } from "@/lib/http";
 import { FISH, NONE } from "@/lib/fish";
+import { cyr } from "@/lib/cyr";
 import { regionShort } from "@/lib/regions";
 import { webhookSecret } from "@/lib/secret";
 import { getSpotByToken } from "@/lib/spots";
@@ -23,21 +24,21 @@ function openButton(base: string, label: string, query = "") {
 }
 
 const GUIDE = (name: string) =>
-  `🎣 Assalomu alaykum${name}!\n\n` +
-  "Bu — baliqchilar uchun umumiy xarita. Har kim topgan joyini qo'shadi, hamma ko'radi va fikr bildiradi.\n\n" +
-  "📍 JOY QO'SHISH\n" +
-  "1. Chat pastidagi 📎 (skrepka) tugmasini bosing\n" +
-  "2. «Location» (Joylashuv) ni tanlang va baliq ovlagan joyingizni yuboring\n" +
-  "3. Bot «🎣 Joyni to'ldirish» tugmasini beradi, uni bosing\n" +
-  "4. Baliq turlarini tanlang (eng ko'p / o'rtacha / eng kam; baliq yo'q bo'lsa «Yo'q»), yem va vaqtni yozing, rasm qo'shing\n" +
-  "5. «Joyni saqlash» ni bosing — joy hammaga ko'rinadi\n\n" +
-  "🗺 XARITA\n" +
-  "• Pastdagi tugma orqali xaritani oching, joy belgisini bosing — baliq, yem, vaqt, rasmlar chiqadi\n" +
-  "• 🧭 Qanday boriladi — Google Xarita, Yandex va boshqa navigatorlarda yo'l olish\n" +
-  "• 💬 Komment — joy egasiga savol yoki fikr yozing\n" +
-  "• 📤 Ulashish — do'stingizga aynan shu joyni yuboring\n\n" +
-  "✏️ Joy ma'lumotlarini faqat uning egasi o'zgartira oladi.\n\n" +
-  "Qayta ko'rish uchun /yordam buyrug'ini yuboring.";
+  `🎣 Ассалому алайкум${name}!\n\n` +
+  "Бу — балиқчилар учун умумий харита. Ҳар ким топган жойини қўшади, ҳамма кўради ва фикр билдиради.\n\n" +
+  "📍 ЖОЙ ҚЎШИШ\n" +
+  "1. Чат пастидаги 📎 (скрепка) тугмасини босинг\n" +
+  "2. «Location» (Жойлашув) ни танланг ва балиқ овлаган жойингизни юборинг\n" +
+  "3. Bot «🎣 Жойни тўлдириш» тугмасини беради, уни босинг\n" +
+  "4. Балиқ турларини танланг (энг кўп / ўртача / энг кам; балиқ йўқ бўлса «Йўқ»), ем ва вақтни ёзинг, расм қўшинг\n" +
+  "5. «Жойни сақлаш» ни босинг — жой ҳаммага кўринади\n\n" +
+  "🗺 ХАРИТА\n" +
+  "• Пастдаги тугма орқали харитани очинг, жой белгисини босинг — балиқ, ем, вақт, расмлар чиқади\n" +
+  "• 🧭 Қандай борилади — Гугл Харита, Яндекс ва бошқа навигаторларда йўл олиш\n" +
+  "• 💬 Коммент — жой эгасига савол ёки фикр ёзинг\n" +
+  "• 📤 Улашиш — дўстингизга айнан шу жойни юборинг\n\n" +
+  "✏️ Жой маълумотларини фақат унинг эгаси ўзгартира олади.\n\n" +
+  "Қайта кўриш учун /yordam буйруғини юборинг.";
 
 async function handleMessage(msg: Msg, base: string) {
   const chatId = msg.chat.id;
@@ -52,20 +53,20 @@ async function handleMessage(msg: Msg, base: string) {
     const spot = await getSpotByToken(shared[1]);
     if (spot) {
       const fish = [
-        ["🥇", "Eng ko'p", spot.fishMost],
-        ["🥈", "O'rtacha", spot.fishMid],
-        ["🥉", "Eng kam", spot.fishLeast],
+        ["🥇", "Энг кўп", spot.fishMost],
+        ["🥈", "Ўртача", spot.fishMid],
+        ["🥉", "Энг кам", spot.fishLeast],
       ]
         .filter((f) => f[2] && (FISH as readonly string[]).includes(f[2] as string))
-        .map((f) => `${f[0]} ${f[1]}: ${f[2]}`);
+        .map((f) => `${f[0]} ${f[1]}: ${cyr(f[2] as string)}`);
       await tgCall("sendMessage", {
         chat_id: chatId,
         text:
-          `🎣 Do'stingiz baliq ovi joyini ulashdi${spot.name ? `: ${spot.name}` : ""}\n` +
-          `📍 ${regionShort(spot.region) || "O'zbekiston"}\n` +
-          (fish.length ? `\n${fish.join("\n")}\n` : spot.fishMost === NONE ? "\nBu joyda baliq deyarli yo'q.\n" : "") +
-          `\nYo'l, yem, vaqt va rasmlar Mini App'da. Pastdagi tugmani bosing.`,
-        reply_markup: openButton(base, "🎣 Joyni ko'rish", `?shared=${shared[1]}`),
+          `🎣 Дўстингиз балиқ ови жойини улашди${spot.name ? `: ${spot.name}` : ""}\n` +
+          `📍 ${cyr(regionShort(spot.region)) || "Ўзбекистон"}\n` +
+          (fish.length ? `\n${fish.join("\n")}\n` : spot.fishMost === NONE ? "\nБу жойда балиқ деярли йўқ.\n" : "") +
+          `\nЙўл, ем, вақт ва расмлар Mini Аппъда. Пастдаги тугмани босинг.`,
+        reply_markup: openButton(base, "🎣 Жойни кўриш", `?shared=${shared[1]}`),
       });
       return;
     }
@@ -78,9 +79,9 @@ async function handleMessage(msg: Msg, base: string) {
     await tgCall("sendMessage", {
       chat_id: chatId,
       text:
-        "📍 Lokatsiya xaritaga qo'shildi, lekin hali to'liq emas.\n" +
-        "Pastdagi tugmani bosib baliq turlarini tanlang. Aks holda joy xaritada boshqacha rangda turadi va boshqalar to'ldirishi mumkin.",
-      reply_markup: openButton(base, "🎣 Joyni to'ldirish", `?spot=${id}`),
+        "📍 Локация харитага қўшилди, лекин ҳали тўлиқ эмас.\n" +
+        "Пастдаги тугмани босиб балиқ турларини танланг. Акс ҳолда жой харитада бошқача рангда туради ва бошқалар тўлдириши мумкин.",
+      reply_markup: openButton(base, "🎣 Жойни тўлдириш", `?spot=${id}`),
     });
     return;
   }
@@ -90,15 +91,15 @@ async function handleMessage(msg: Msg, base: string) {
     await tgCall("sendMessage", {
       chat_id: chatId,
       text: GUIDE(name),
-      reply_markup: openButton(base, "🗺 Xaritani ochish"),
+      reply_markup: openButton(base, "🗺 Харитани очиш"),
     });
     return;
   }
 
   await tgCall("sendMessage", {
     chat_id: chatId,
-    text: text.startsWith("/xarita") || text.startsWith("/map") ? "Xaritangiz:" : "Lokatsiya yuboring (📎 → Location) yoki xaritani oching.",
-    reply_markup: openButton(base, "🗺 Xaritani ochish"),
+    text: text.startsWith("/xarita") || text.startsWith("/map") ? "Харитангиз:" : "Локация юборинг (📎 → Location) ёки харитани очинг.",
+    reply_markup: openButton(base, "🗺 Харитани очиш"),
   });
 }
 
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
     await warnStale(appUrl(req));
   } catch (e) {
     // Telegram qayta-qayta yubormasligi uchun har doim 200 qaytaramiz.
-    console.error("Webhook xatosi", e);
+    console.error("Webhook хатоси", e);
   }
   return NextResponse.json({ ok: true });
 }

@@ -19,14 +19,14 @@ export async function POST(req: Request, ctx: Ctx) {
     if (!spot) return notFound();
 
     const body = (await req.json()) as { url?: unknown; kind?: unknown };
-    if (typeof body.url !== "string") return badRequest("url kerak");
+    if (typeof body.url !== "string") return badRequest("url керак");
     let host = "";
     try {
       host = new URL(body.url).hostname;
     } catch {
-      return badRequest("url noto'g'ri");
+      return badRequest("url нотўғри");
     }
-    if (!host.endsWith(".public.blob.vercel-storage.com")) return badRequest("Faqat Blob manzillari qabul qilinadi");
+    if (!host.endsWith(".public.blob.vercel-storage.com")) return badRequest("Фақат Blob манзиллари қабул қилинади");
     const kind = body.kind === "video" ? "video" : "image";
 
     const r = await query<{ id: number }>(
@@ -56,7 +56,7 @@ export async function DELETE(req: Request, ctx: Ctx) {
     try {
       await del(media.url);
     } catch (e) {
-      console.error("Blob o'chirishda xato", e);
+      console.error("Blob ўчиришда хато", e);
     }
     return NextResponse.json({ ok: true });
   } catch (e) {

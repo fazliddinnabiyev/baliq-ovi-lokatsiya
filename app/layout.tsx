@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Baliq joylarim",
-  description: "Baliq ovlash joylarimning xaritasi va daftari",
+  title: "Балиқ жойларим",
+  description: "Балиқ овлаш жойларимнинг харитаси ва дафтари",
 };
 
 export const viewport: Viewport = {
