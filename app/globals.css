@@ -1068,3 +1068,19 @@ option:disabled {
   inset: 6px;
   background: #ffffffcc;
 }
+
+.publicWarn {
+  margin: 0 0 10px;
+  padding: 9px 12px;
+  border-radius: 12px;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  background: #fff3cd;
+  color: #5c4400;
+}
+
+:root[data-theme="dark"] .publicWarn {
+  background: #4a3b10;
+  color: #ffe08a;
+}

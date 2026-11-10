@@ -597,10 +597,6 @@ export default function App() {
             key={selected.id}
             spot={selected}
             onClose={() => setSelectedId(null)}
-            onCopied={(mine) => {
-              setSpots((prev) => (prev.some((x) => x.id === mine.id) ? prev : [mine, ...prev]));
-              setSelectedId(mine.id);
-            }}
             toast={toast}
           />
         ))

@@ -11,27 +11,12 @@ import Directions from "./Directions";
 type Props = {
   spot: Spot;
   onClose: () => void;
-  onCopied: (spot: Spot) => void;
   toast: (msg: string) => void;
 };
 
-/** Boshqa foydalanuvchining joyi: faqat ko'rish, yo'nalish, yuklab olish va komment. */
-export default function ViewSheet({ spot, onClose, onCopied, toast }: Props) {
+/** Boshqa foydalanuvchining joyi: faqat ko'rish, yo'nalish va komment. */
+export default function ViewSheet({ spot, onClose, toast }: Props) {
   const [dir, setDir] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  async function copy() {
-    setSaving(true);
-    try {
-      const mine = await api<Spot>(`/api/spots/${spot.id}/copy`, { method: "POST" });
-      toast("Joylarimga yuklab olindi ✓");
-      onCopied(mine);
-    } catch (e) {
-      toast((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function share() {
     try {
@@ -76,9 +61,6 @@ export default function ViewSheet({ spot, onClose, onCopied, toast }: Props) {
       <div className="quick">
         <button className="primary" onClick={() => setDir(true)}>
           🧭 Qanday boriladi
-        </button>
-        <button className="ghost" onClick={copy} disabled={saving}>
-          {saving ? "Yuklanmoqda..." : "⬇️ Yuklab olish"}
         </button>
         <button className="ghost" onClick={share}>
           📤 Ulashish

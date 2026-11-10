@@ -34,7 +34,6 @@ const GUIDE = (name: string) =>
   "🗺 XARITA\n" +
   "• Pastdagi tugma orqali xaritani oching, joy belgisini bosing — baliq, yem, vaqt, rasmlar chiqadi\n" +
   "• 🧭 Qanday boriladi — Google Xarita, Yandex va boshqa navigatorlarda yo'l olish\n" +
-  "• ⬇️ Yuklab olish — boshqaning joyini o'z ro'yxatingizga nusxalash\n" +
   "• 💬 Komment — joy egasiga savol yoki fikr yozing\n" +
   "• 📤 Ulashish — do'stingizga aynan shu joyni yuboring\n\n" +
   "✏️ Joy ma'lumotlarini faqat uning egasi o'zgartira oladi.\n\n" +

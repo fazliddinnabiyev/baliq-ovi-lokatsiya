@@ -200,6 +200,43 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
       )}
 
       <div className="section">
+        <h3>📷 Rasm va videolar</h3>
+        <p className="publicWarn">⚠️ Yuklangan rasm va videolarni hamma ko'radi. Shaxsiy rasm yuklamang.</p>
+        {isNew ? (
+          <p className="hint">Rasm va video joy saqlangandan keyin qo'shiladi.</p>
+        ) : (
+          <>
+            <div className="mediaGrid">
+              {spot.media.map((m) => (
+                <button key={m.id} className="thumb" onClick={() => setViewer(m)}>
+                  {m.kind === "video" ? (
+                    <>
+                      <video src={`${m.url}#t=0.1`} preload="metadata" muted playsInline />
+                      <span className="play">▶</span>
+                    </>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={m.url} alt="" loading="lazy" />
+                  )}
+                </button>
+              ))}
+              <button className="thumb addThumb" onClick={() => fileRef.current?.click()} disabled={!!progress}>
+                {progress ? progress : "＋"}
+              </button>
+            </div>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,video/*"
+              multiple
+              hidden
+              onChange={(e) => onFiles(e.target.files)}
+            />
+          </>
+        )}
+      </div>
+
+      <div className="section">
         <h3>🐟 Qaysi baliq ko'proq? (majburiy)</h3>
         <p className="hint hintTop">Baliq deyarli bo'lmasa, "Yo'q" ni tanlang.</p>
         {fishSelect("🥇", "Eng ko'p", fishMost, setFishMost)}
@@ -239,42 +276,6 @@ export default function SpotSheet({ spot, isNew = false, onClose, onSaved, onCre
           placeholder="Keyingi mavsum uchun eslatma: qanday yetib borish, chuqurlik, qirg'oq, ..."
           onChange={(e) => setNote(e.target.value)}
         />
-      </div>
-
-      <div className="section">
-        <h3>📷 Rasm va videolar</h3>
-        {isNew ? (
-          <p className="hint">Rasm va video joy saqlangandan keyin qo'shiladi.</p>
-        ) : (
-          <>
-            <div className="mediaGrid">
-              {spot.media.map((m) => (
-                <button key={m.id} className="thumb" onClick={() => setViewer(m)}>
-                  {m.kind === "video" ? (
-                    <>
-                      <video src={`${m.url}#t=0.1`} preload="metadata" muted playsInline />
-                      <span className="play">▶</span>
-                    </>
-                  ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={m.url} alt="" loading="lazy" />
-                  )}
-                </button>
-              ))}
-              <button className="thumb addThumb" onClick={() => fileRef.current?.click()} disabled={!!progress}>
-                {progress ? progress : "＋"}
-              </button>
-            </div>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="image/*,video/*"
-              multiple
-              hidden
-              onChange={(e) => onFiles(e.target.files)}
-            />
-          </>
-        )}
       </div>
 
       <div className="section">
