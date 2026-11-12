@@ -8,6 +8,7 @@ import { isRegion } from "@/lib/regions";
 import { appUrl } from "@/lib/http";
 import { warnStale } from "@/lib/incomplete";
 import { getSpot, listSpots } from "@/lib/spots";
+import { trackUser } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ export async function GET(req: Request) {
     // Eski joylarga egasining ismini yozib qo'yamiz (komment va ro'yxatda ko'rinishi uchun).
     await query(`UPDATE spots SET owner_name = $1 WHERE owner_id = $2 AND owner_name = ''`, [displayName(user), String(user.id)]);
     warnStale(appUrl(req)).catch(() => {});
+    trackUser(user, false).catch(() => {});
     return NextResponse.json(await listSpots(String(user.id)));
   } catch (e) {
     return fail(e);

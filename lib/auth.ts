@@ -53,3 +53,11 @@ export function requireUser(req: Request): TgUser | null {
   const user = verifyInitData(req.headers.get("x-telegram-init-data") || "");
   return user;
 }
+
+/** Boshqaruvchi: Telegram username (ADMIN_USERNAME, standart fazliddin_nabiyev) yoki ADMIN_IDS ro'yxati. */
+export function isAdmin(u: { id: number; username?: string } | null | undefined): boolean {
+  if (!u) return false;
+  const name = (process.env.ADMIN_USERNAME || "fazliddin_nabiyev").replace(/^@/, "").toLowerCase();
+  if (u.username && u.username.toLowerCase() === name) return true;
+  return (process.env.ADMIN_IDS || "").split(",").map((x) => x.trim()).filter(Boolean).includes(String(u.id));
+}

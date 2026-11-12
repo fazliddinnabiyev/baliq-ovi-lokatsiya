@@ -53,6 +53,26 @@ CREATE TABLE IF NOT EXISTS spot_comments (
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS spot_comments_spot_idx ON spot_comments (spot_id);
+CREATE TABLE IF NOT EXISTS app_users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL DEFAULT '',
+  first_name TEXT NOT NULL DEFAULT '',
+  first_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
+  last_seen TIMESTAMPTZ NOT NULL DEFAULT now(),
+  opens INT NOT NULL DEFAULT 0,
+  started BOOLEAN NOT NULL DEFAULT false
+);
+CREATE TABLE IF NOT EXISTS app_activity (
+  user_id TEXT NOT NULL,
+  day DATE NOT NULL,
+  PRIMARY KEY (user_id, day)
+);
+INSERT INTO app_users (id, first_name, first_seen, last_seen)
+  SELECT owner_id, MAX(owner_name), MIN(created_at), MAX(created_at) FROM spots GROUP BY owner_id
+  ON CONFLICT (id) DO NOTHING;
+INSERT INTO app_users (id, first_name, first_seen, last_seen)
+  SELECT user_id, MAX(user_name), MIN(created_at), MAX(created_at) FROM spot_comments GROUP BY user_id
+  ON CONFLICT (id) DO NOTHING;
 `;
 
 const g = globalThis as unknown as {

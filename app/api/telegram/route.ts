@@ -7,13 +7,15 @@ import { webhookSecret } from "@/lib/secret";
 import { getSpotByToken } from "@/lib/spots";
 import { createIncompleteSpot, warnStale } from "@/lib/incomplete";
 import { tgCall } from "@/lib/telegram";
+import { isAdmin } from "@/lib/auth";
+import { trackUser } from "@/lib/stats";
 
 export const dynamic = "force-dynamic";
 
 type Msg = {
   message_id: number;
   chat: { id: number };
-  from?: { id: number; first_name?: string };
+  from?: { id: number; first_name?: string; username?: string };
   text?: string;
   location?: { latitude: number; longitude: number };
 };
@@ -46,6 +48,17 @@ async function handleMessage(msg: Msg, base: string) {
   if (!userId) return;
 
   const text = (msg.text || "").trim();
+  if (msg.from) trackUser(msg.from, true).catch(() => {});
+
+  // Faqat boshqaruvchi uchun; boshqalarga oddiy javob (hech narsa o'zgarmaydi).
+  if (/^\/admin\b/.test(text) && isAdmin(msg.from)) {
+    await tgCall("sendMessage", {
+      chat_id: chatId,
+      text: "📊 Бошқарув саҳифаси",
+      reply_markup: { inline_keyboard: [[{ text: "📊 Статистика", web_app: { url: `${base}/admin` } }]] },
+    });
+    return;
+  }
 
   // Do'st ulashgan joy: /start s_<token>. Hamma ochishi mumkin (faqat ko'rish uchun).
   const shared = text.match(/^\/start(?:@\w+)?\s+s_([a-f0-9]{16})$/);
