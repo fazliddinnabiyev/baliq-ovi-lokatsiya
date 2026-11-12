@@ -1084,3 +1084,17 @@ option:disabled {
   background: #4a3b10;
   color: #ffe08a;
 }
+
+.adminBtn {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #14575f;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 20px;
+}

@@ -93,7 +93,8 @@ export default function Admin() {
   return (
     <div style={{ background: "#eef3f1", minHeight: "100vh", padding: 16, color: "#16282b", fontFamily: "system-ui, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <h1 style={{ fontSize: 22, margin: 0 }}>📊 Статистика</h1>
+        <a href="/" style={{ color: "#14575f", fontWeight: 800, textDecoration: "none" }}>← Харита</a>
+        <h1 style={{ fontSize: 20, margin: 0 }}>📊 Статистика</h1>
         <button onClick={load} style={{ border: 0, background: "#14575f", color: "#fff", borderRadius: 12, padding: "8px 14px", fontWeight: 700 }}>↻ Янгилаш</button>
       </div>
 

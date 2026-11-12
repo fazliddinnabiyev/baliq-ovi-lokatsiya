@@ -91,6 +91,10 @@ export default function App() {
   const [regionFilter, setRegionFilter] = useState("");
   const [newSpot, setNewSpot] = useState<{ lat: number; lng: number } | null>(null);
   const [onlyMine, setOnlyMine] = useState(false);
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    api("/api/admin/check").then(() => setAdmin(true)).catch(() => {});
+  }, []);
   const [message, setMessage] = useState("");
   const [ready, setReady] = useState(false);
 
@@ -412,6 +416,11 @@ export default function App() {
       <header className="head">
         <h1>Балиқ жойлари</h1>
         <span className="count">{spots.length}  та жой</span>
+        {admin && (
+          <a className="adminBtn" href="/admin">
+            📊
+          </a>
+        )}
       </header>
 
       <section className="mapCard">
