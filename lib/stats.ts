@@ -56,7 +56,7 @@ export async function collectStats() {
   const recent = (await query<{ name: string; username: string; first_seen: string; last_seen: string; opens: number }>(
     `SELECT COALESCE(NULLIF(first_name,''), id) name, username, first_seen, last_seen, opens FROM app_users ORDER BY last_seen DESC LIMIT 15`)).rows;
   const daily = (await query<{ day: string; active: string; fresh: string; spots: string }>(
-    `SELECT to_char(d, 'DD.MM') day,
+    `SELECT to_char(d, 'DD.MM') AS day,
        (SELECT COUNT(*) FROM app_activity a WHERE a.day = d) active,
        (SELECT COUNT(*) FROM app_users u WHERE (u.first_seen AT TIME ZONE 'Asia/Tashkent')::date = d) fresh,
        (SELECT COUNT(*) FROM spots s WHERE (s.created_at AT TIME ZONE 'Asia/Tashkent')::date = d) spots
